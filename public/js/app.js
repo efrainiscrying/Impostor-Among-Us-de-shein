@@ -1245,10 +1245,11 @@
     const open = force !== undefined ? force : !App.chatOpen;
     App.chatOpen = open;
     $('#chat').classList.toggle('show', open);
+    $('#meeting').classList.toggle('chat-open', open);
     if (open) {
       App.unread = 0; updateBadges();
       const G = App.G;
-      $('#chatTitle').textContent = G && !G.alive ? 'Chat de fantasmas 👻' : G ? 'Chat de la reunión' : 'Chat de la sala';
+      $('#chatTitle').textContent = !G ? 'Chat de la sala' : G.phase === 'meeting' ? (G.alive ? 'Chat de la reunión' : 'Reunión · solo los fantasmas te leen 👻') : 'Chat de fantasmas 👻';
       setTimeout(() => $('#chatInput').focus(), 300);
       const log = $('#chatLog'); log.scrollTop = log.scrollHeight;
       Sfx.open();
