@@ -1478,7 +1478,7 @@
     DPR = Math.min(2, devicePixelRatio || 1);
     W = innerWidth; H = innerHeight;
     cv.width = W * DPR; cv.height = H * DPR;
-    fog.width = cv.width; fog.height = cv.height;
+    fog.width = Math.ceil(cv.width / 2); fog.height = Math.ceil(cv.height / 2);
     App.cam.zoom = clamp(Math.min(H / 900, W / (W < H ? 640 : 1100)), 0.45, 1.2);
     renderVentArrows();
   }
@@ -1565,8 +1565,8 @@
     }
     // cámara
     const c = App.cam;
-    c.x += (me.x - c.x) * Math.min(1, dt * 7);
-    c.y += (me.y - 40 - c.y) * Math.min(1, dt * 7);
+    c.x += (me.x - c.x) * Math.min(1, dt * 14);
+    c.y += (me.y - 40 - c.y) * Math.min(1, dt * 14);
     App.shake *= Math.pow(0.02, dt);
     // interacciones
     App.interact = computeInteract();
@@ -1625,8 +1625,10 @@
     World.drawLive(ctx, map, ts, { sab: G && G.sab && G.sab.kind, ventFx: App.ventFx, closedDoors: App.closedDoors, highlights: App.interact.highlights || [] });
 
     const fogOn = fogActive();
-    const R = App.visR = visionRadius();
-    const eyeX = App.me.x, eyeY = App.me.y - 20;
+    const target = visionRadius();
+    App.visR = App.visR ? App.visR + (target - App.visR) * 0.08 : target;
+    const R = App.visR;
+    const eyeX = App.me.x, eyeY = App.me.y - 30;
     const iAmGhost = G && !G.alive;
     // entidades ordenadas por profundidad
     const ents = [];
@@ -1658,13 +1660,14 @@
       fctx.setTransform(1, 0, 0, 1, 0, 0);
       fctx.clearRect(0, 0, fog.width, fog.height);
       const dark = G.sab && G.sab.kind === 'lights' && !isImp();
-      fctx.fillStyle = dark ? 'rgba(2,3,8,0.95)' : 'rgba(4,6,14,0.84)';
+      fctx.fillStyle = dark ? 'rgba(2,3,8,0.94)' : 'rgba(6,8,18,0.78)';
       fctx.fillRect(0, 0, fog.width, fog.height);
-      fctx.setTransform(...worldT);
+      fctx.setTransform(worldT[0] / 2, 0, 0, worldT[3] / 2, worldT[4] / 2, worldT[5] / 2);
       const poly = World.visionPolygon(map, B.vgrid, eyeX, eyeY, R, App.closedDoors);
       World.drawFog(fctx, poly, eyeX, eyeY, R);
       ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.drawImage(fog, 0, 0);
+      ctx.imageSmoothingEnabled = true;
+      ctx.drawImage(fog, 0, 0, cv.width, cv.height);
       ctx.setTransform(...worldT);
     }
 
