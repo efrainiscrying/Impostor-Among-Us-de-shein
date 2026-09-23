@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#07080f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="Among Us (Temu): juego de deducción social multijugador en el navegador. Encuentra al impostor con tus amigos.">
+<title>Among Us (Temu)</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect x='6' y='22' width='12' height='26' rx='5' fill='%237a0838' stroke='%23000' stroke-width='3'/%3E%3Cpath d='M16 50V26C16 8 50 8 50 26v26a6 6 0 0 1-6 6H22a6 6 0 0 1-6-8z' fill='%23c51111' stroke='%23000' stroke-width='3'/%3E%3Crect x='28' y='18' width='26' height='16' rx='8' fill='%2395c9d9' stroke='%23000' stroke-width='3'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Lilita+One&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<canvas id="menuBg"></canvas>
+
+<!-- ============ PORTADA ============ -->
+<section id="scrSplash" class="screen active">
+  <div class="splash-inner">
+    <div class="logo big"><span class="logo-main">AMONG US</span><span class="logo-tag">TEMU</span></div>
+    <p class="splash-sub">Edición de navegador · juega con tus amigos</p>
+    <button class="btn primary xl pulse" id="btnStart">Toca para comenzar</button>
+    <div class="splash-foot">Hecho para ti y tus amigos · v1.0</div>
+  </div>
+</section>
+
+<!-- ============ LOGIN ============ -->
+<section id="scrAuth" class="screen">
+  <div class="auth-wrap">
+    <div class="logo"><span class="logo-main">AMONG US</span><span class="logo-tag">TEMU</span></div>
+    <div class="glass auth-card">
+      <div class="segmented" id="authSeg">
+        <button class="seg active" data-mode="login">Iniciar sesión</button>
+        <button class="seg" data-mode="register">Crear cuenta</button>
+        <span class="seg-pill"></span>
+      </div>
+      <form id="authForm" autocomplete="on">
+        <label class="field">
+          <span>Usuario</span>
+          <input id="authUser" name="username" autocomplete="username" maxlength="14" placeholder="Tu nombre en el juego" required>
+        </label>
+        <label class="field">
+          <span>Contraseña</span>
+          <input id="authPass" name="password" type="password" autocomplete="current-password" maxlength="64" placeholder="••••••" required>
+        </label>
+        <label class="field reg-only">
+          <span>Repite la contraseña</span>
+          <input id="authPass2" type="password" autocomplete="new-password" maxlength="64" placeholder="••••••">
+        </label>
+        <div class="form-error" id="authError"></div>
+        <button class="btn primary block" id="authSubmit" type="submit">Entrar</button>
+      </form>
+      <p class="auth-hint" id="authHint">¿No tienes cuenta? Toca <b>Crear cuenta</b>. Solo necesitas un usuario y una contraseña.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MENÚ PRINCIPAL ============ -->
+<section id="scrHome" class="screen">
+  <header class="home-top">
+    <div class="logo small"><span class="logo-main">AMONG US</span><span class="logo-tag">TEMU</span></div>
+    <div class="user-chip glass" id="userChip"><img id="chipBean" alt=""><span id="chipName"></span></div>
+  </header>
+  <div class="home-main">
+    <div class="home-hero">
+      <canvas id="heroCanvas" width="360" height="360"></canvas>
+      <div class="hero-name" id="heroName"></div>
+      <div class="stats" id="stats"></div>
+    </div>
+    <div class="home-menu">
+      <button class="menu-card glass accent" id="mCreateBtn"><div class="mc-icon" data-icon="play"></div><div><b>Crear partida</b><small>Tú eres el anfitrión y eliges las reglas</small></div></button>
+      <button class="menu-card glass" id="mJoinBtn"><div class="mc-icon" data-icon="key"></div><div><b>Unirse con código</b><small>Escribe el código que te mandaron</small></div></button>
+      <button class="menu-card glass" id="mBrowseBtn"><div class="mc-icon" data-icon="globe"></div><div><b>Salas públicas</b><small>Encuentra partidas abiertas</small></div></button>
+      <button class="menu-card glass" id="mPracticeBtn"><div class="mc-icon" data-icon="bot"></div><div><b>Práctica con bots</b><small>Juega ya mismo contra la IA</small></div></button>
+      <div class="menu-row">
+        <button class="pill-btn glass" id="mCustomBtn"><span data-icon="shirt"></span>Personalizar</button>
+        <button class="pill-btn glass" id="mSettingsBtn"><span data-icon="gear"></span>Ajustes</button>
+        <button class="pill-btn glass" id="mLogoutBtn"><span data-icon="exit"></span>Salir</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ JUEGO ============ -->
+<section id="scrGame" class="screen">
+  <canvas id="game"></canvas>
+  <div class="vignette" id="vignette"></div>
+  <div class="sab-flash" id="sabFlash"></div>
+
+  <div class="hud">
+    <!-- arriba izquierda -->
+    <div class="hud-tl">
+      <button class="hud-btn glass" id="btnLeave" title="Salir"><span data-icon="back"></span></button>
+      <div class="task-panel glass" id="taskPanel">
+        <div class="tp-bar" id="tpBar"><div class="tp-label">TAREAS COMPLETADAS</div><div class="tp-track"><div class="tp-fill" id="tpFill"></div></div></div>
+        <div class="tp-head" id="tpHead">Tareas</div>
+        <ul class="tp-list" id="tpList"></ul>
+      </div>
+    </div>
+    <!-- arriba centro -->
+    <div class="hud-tc">
+      <div class="lobby-code glass" id="lobbyCode"><small>CÓDIGO</small><b id="codeText">------</b><button class="icon-btn" id="copyLink" title="Copiar invitación"><span data-icon="link"></span></button></div>
+      <div class="hs-timer glass" id="hsTimer"><small id="hsLabel">TIEMPO</small><b id="hsTime">0:00</b><div class="hs-track"><div id="hsFill"></div></div></div>
+      <div class="sab-banner" id="sabBanner"></div>
+    </div>
+    <!-- arriba derecha -->
+    <div class="hud-tr">
+      <button class="hud-btn glass" id="btnChat" title="Chat (Enter)"><span data-icon="chat"></span><i class="badge" id="chatBadge"></i></button>
+      <button class="hud-btn glass" id="btnMap" title="Mapa (Tab)"><span data-icon="map"></span></button>
+      <button class="hud-btn glass" id="btnGear" title="Ajustes"><span data-icon="gear"></span></button>
+    </div>
+
+    <!-- barra de sala -->
+    <div class="lobby-bar glass" id="lobbyBar">
+      <button class="lb-btn" id="lbCustom"><span data-icon="shirt"></span><em>Personalizar</em></button>
+      <div class="lb-count"><span data-icon="users"></span><b id="lbCount">1/10</b></div>
+      <button class="lb-btn" id="lbSettings"><span data-icon="sliders"></span><em>Reglas</em></button>
+      <button class="btn primary" id="lbStart">Empezar</button>
+    </div>
+
+    <!-- botones de acción -->
+    <div class="actions" id="actions">
+      <button class="act" id="actSabotage" data-key="G"><span data-icon="sabotage"></span><em>SABOTAJE</em></button>
+      <button class="act" id="actVent" data-key="V"><span data-icon="vent"></span><em>VENTILA</em></button>
+      <button class="act" id="actKill" data-key="Q"><span data-icon="kill"></span><em>MATAR</em><i class="cd" id="killCd"></i></button>
+      <button class="act" id="actReport" data-key="R"><span data-icon="report"></span><em>REPORTAR</em></button>
+      <button class="act big" id="actUse" data-key="E"><span data-icon="use"></span><em id="useLabel">USAR</em></button>
+    </div>
+    <div class="vent-arrows" id="ventArrows"></div>
+    <div class="joystick" id="joystick"><div class="knob" id="knob"></div></div>
+    <div class="danger" id="danger"><div class="danger-dot"></div><span>PELIGRO</span></div>
+    <div class="ghost-tip glass" id="ghostTip">Eres un fantasma 👻 Termina tus tareas para ayudar a tu equipo.</div>
+  </div>
+
+  <!-- chat -->
+  <aside class="chat glass" id="chat">
+    <header><b id="chatTitle">Chat</b><button class="icon-btn" id="chatClose"><span data-icon="x"></span></button></header>
+    <div class="chat-log" id="chatLog"></div>
+    <form class="chat-form" id="chatForm"><input id="chatInput" maxlength="140" autocomplete="off" placeholder="Escribe un mensaje…"><button class="btn primary sm" type="submit"><span data-icon="send"></span></button></form>
+  </aside>
+
+  <!-- mapa -->
+  <div class="overlay" id="mapOverlay">
+    <div class="map-card glass">
+      <header><b id="mapTitle">Mapa de la nave</b><button class="icon-btn" id="mapClose"><span data-icon="x"></span></button></header>
+      <div class="map-wrap" id="mapWrap"><canvas id="mapCanvas"></canvas><div id="sabButtons"></div></div>
+    </div>
+  </div>
+
+  <!-- tareas -->
+  <div class="overlay" id="taskOverlay">
+    <div class="task-card">
+      <header><b id="taskTitle"></b><button class="icon-btn" id="taskClose"><span data-icon="x"></span></button></header>
+      <div class="task-canvas-wrap"><canvas id="taskCanvas"></canvas><div class="task-done" id="taskDone"><span data-icon="check"></span>¡Tarea completada!</div></div>
+    </div>
+  </div>
+
+  <!-- revelación de rol -->
+  <div class="fx" id="roleReveal">
+    <div class="shh" id="shh"><div class="shh-bean" id="shhBean"></div><div class="shh-text">Shhhhh!</div></div>
+    <div class="role" id="roleBox">
+      <div class="role-title" id="roleTitle"></div>
+      <div class="role-sub" id="roleSub"></div>
+      <div class="lineup" id="lineup"></div>
+    </div>
+  </div>
+
+  <!-- animación de muerte -->
+  <div class="fx" id="killFx"><canvas id="killCanvas"></canvas></div>
+
+  <!-- anuncio de reunión -->
+  <div class="fx" id="meetSplash"><canvas id="meetCanvas"></canvas><div class="ms-text" id="msText"></div></div>
+
+  <!-- reunión -->
+  <div class="overlay meeting" id="meeting">
+    <div class="tablet">
+      <div class="tab-head">
+        <div class="tab-title">¿Quién es el impostor?</div>
+        <div class="tab-timer" id="meetTimer"></div>
+        <button class="hud-btn glass" id="meetChatBtn"><span data-icon="chat"></span><i class="badge" id="meetBadge"></i></button>
+      </div>
+      <div class="vote-grid" id="voteGrid"></div>
+      <div class="tab-foot">
+        <div class="skip-wrap"><button class="btn ghost" id="skipBtn">Omitir voto</button><div class="voters" id="skipVoters"></div></div>
+        <div class="tab-hint" id="meetHint"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- expulsión -->
+  <div class="fx" id="ejectFx"><canvas id="ejectCanvas"></canvas><div class="eject-text"><div id="ejLine1"></div><div id="ejLine2"></div></div></div>
+
+  <!-- fin de partida -->
+  <div class="fx" id="gameOver">
+    <div class="go-title" id="goTitle"></div>
+    <div class="go-reason" id="goReason"></div>
+    <div class="lineup" id="goLineup"></div>
+    <div class="go-rank" id="goRank"></div>
+    <button class="btn primary" id="goContinue">Continuar</button>
+  </div>
+</section>
+
+<!-- ============ MODALES ============ -->
+<div class="modal" id="mCreate">
+  <div class="sheet glass">
+    <header><b>Crear partida</b><button class="icon-btn" data-close><span data-icon="x"></span></button></header>
+    <div class="mode-cards" id="modeCards"></div>
+    <label class="toggle-row"><span>Sala pública <small>Aparece en «Salas públicas»</small></span><input type="checkbox" id="createPublic"><i class="switch"></i></label>
+    <button class="btn primary block" id="createGo">Crear sala</button>
+  </div>
+</div>
+
+<div class="modal" id="mJoin">
+  <div class="sheet glass small">
+    <header><b>Unirse con código</b><button class="icon-btn" data-close><span data-icon="x"></span></button></header>
+    <input class="code-input" id="joinCode" maxlength="6" placeholder="ABCDEF" autocomplete="off" autocapitalize="characters">
+    <button class="btn primary block" id="joinGo">Unirse</button>
+  </div>
+</div>
+
+<div class="modal" id="mBrowse">
+  <div class="sheet glass">
+    <header><b>Salas públicas</b><div><button class="icon-btn" id="browseRefresh"><span data-icon="refresh"></span></button><button class="icon-btn" data-close><span data-icon="x"></span></button></div></header>
+    <div class="room-list" id="roomList"></div>
+  </div>
+</div>
+
+<div class="modal" id="mCustom">
+  <div class="sheet glass wide">
+    <header><b>Personalizar</b><button class="icon-btn" data-close><span data-icon="x"></span></button></header>
+    <div class="custom-body">
+      <div class="custom-preview"><canvas id="customCanvas" width="260" height="260"></canvas></div>
+      <div class="custom-opts">
+        <div class="sub-head">Color</div>
+        <div class="color-grid" id="colorGrid"></div>
+        <div class="sub-head">Sombrero</div>
+        <div class="hat-grid" id="hatGrid"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="mSettings">
+  <div class="sheet glass small">
+    <header><b>Ajustes</b><button class="icon-btn" data-close><span data-icon="x"></span></button></header>
+    <label class="slider-row"><span>Efectos</span><input type="range" min="0" max="1" step="0.05" id="volSfx"></label>
+    <label class="slider-row"><span>Música</span><input type="range" min="0" max="1" step="0.05" id="volMusic"></label>
+    <label class="slider-row"><span>Ambiente</span><input type="range" min="0" max="1" step="0.05" id="volAmb"></label>
+    <div class="keys-help">
+      <div><kbd>WASD</kbd>/<kbd>↑↓←→</kbd> moverse</div>
+      <div><kbd>E</kbd>/<kbd>Espacio</kbd> usar · <kbd>R</kbd> reportar</div>
+      <div><kbd>Q</kbd> matar · <kbd>V</kbd> ventila · <kbd>G</kbd> sabotaje</div>
+      <div><kbd>Tab</kbd> mapa · <kbd>Enter</kbd> chat · <kbd>Esc</kbd> cerrar</div>
+    </div>
+    <button class="btn danger block" id="settingsLeave">Salir de la sala</button>
+  </div>
+</div>
+
+<div class="modal" id="mRules">
+  <div class="sheet glass wide tall">
+    <header><b>Reglas de la partida</b><button class="icon-btn" data-close><span data-icon="x"></span></button></header>
+    <div class="rules-body">
+      <div class="mode-cards compact" id="rulesModes"></div>
+      <div class="rules-note" id="rulesNote"></div>
+      <div class="rules-grid" id="rulesGrid"></div>
+      <div class="sub-head">Jugadores</div>
+      <div class="bot-row" id="botRow"><span>Bots</span><button class="step" id="botMinus">−</button><b id="botCount">0</b><button class="step" id="botPlus">+</button></div>
+      <label class="toggle-row" id="publicRow"><span>Sala pública</span><input type="checkbox" id="rulesPublic"><i class="switch"></i></label>
+      <div class="player-list" id="playerList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="toasts" id="toasts"></div>
+<div class="conn" id="conn">Reconectando…</div>
+<div class="fade" id="fade"></div>
+
+<script src="js/shared.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/draw.js"></script>
+<script src="js/world.js"></script>
+<script src="js/tasks.js"></script>
+<script src="js/icons.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

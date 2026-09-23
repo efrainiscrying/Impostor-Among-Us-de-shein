@@ -1,12 +1,11 @@
 services:
   - type: web
-    name: impostor-online
+    name: among-us-temu
     runtime: node
     plan: free
-    buildCommand: npm install && npm run build
+    buildCommand: npm install
     startCommand: npm start
+    healthCheckPath: /health
     envVars:
-      - key: JWT_SECRET
-        generateValue: true
       - key: NODE_VERSION
         value: 20.11.0
