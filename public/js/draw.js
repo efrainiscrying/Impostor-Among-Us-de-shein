@@ -155,13 +155,29 @@
       c.fillStyle = (Math.floor(t * 3) % 2) ? '#ff5252' : '#ffeb3b';
       c.beginPath(); c.arc(2 + Math.sin(t * 4) * 3, -100, 5, 0, 7); c.fill(); c.stroke();
     },
-    shein(c) {
-      c.fillStyle = '#111'; rr(c, -12, -96, 30, 26, 3); c.fill(); c.stroke();
-      c.strokeStyle = '#111'; c.lineWidth = 2.5; c.beginPath(); c.arc(3, -96, 8, Math.PI, 0); c.stroke();
-      c.strokeStyle = OUT;
-      c.fillStyle = '#fff'; c.fillRect(-6, -86, 18, 4); c.fillRect(-3, -80, 12, 2);
+    temu(c) {
+      // bolsa naranja de Temu con asa blanca
+      c.strokeStyle = '#f5f5f5'; c.lineWidth = 2.2;
+      c.beginPath(); c.moveTo(-4, -93); c.bezierCurveTo(-4, -112, 12, -112, 12, -93); c.stroke();
+      c.strokeStyle = OUT; c.lineWidth = 2.5;
+      const g = c.createLinearGradient(-14, 0, 22, 0);
+      g.addColorStop(0, '#ff8a2a'); g.addColorStop(0.7, '#f36b1c'); g.addColorStop(1, '#d9550f');
+      c.fillStyle = g;
+      c.beginPath(); c.moveTo(-15, -96); c.lineTo(21, -96); c.lineTo(23, -70); c.lineTo(-17, -70); c.closePath(); c.fill(); c.stroke();
+      c.fillStyle = '#c94d0c'; c.fillRect(-15, -96, 36, 3);
+      // texto siempre legible aunque el personaje mire a la izquierda
+      c.save();
+      c.translate(3, -79);
+      if (c.getTransform().a < 0) c.scale(-1, 1);
+      c.fillStyle = '#fff';
+      c.font = '900 9px Inter, system-ui, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+      c.fillText('TEMU', 0, 1);
+      c.fillRect(-9, -9, 3, 3); c.fillRect(-4, -9, 3, 3); c.fillRect(1, -9, 3, 3); c.fillRect(6, -9, 3, 3);
+      c.restore();
     },
   };
+
+  HAT.shein = HAT.temu; // cuentas antiguas con la bolsa anterior
 
   // ------------------------------------------------------------ tripulante
   function bean(c, x, y, o) {

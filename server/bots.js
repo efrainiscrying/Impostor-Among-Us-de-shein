@@ -360,7 +360,8 @@ function onMeeting(room) {
     if (!p.bot || p.left) continue;
     if (!p.ai) initAI(p);
     p.ai.path = []; p.ai.doing = null; p.ai.chase = null; p.ai.reportAt = 0;
-    p.ai.chatAt = p.alive ? now + rnd(3800, 9000) : 0;
+    const talkers = room.active().filter(q => q.bot && q.alive).length;
+    p.ai.chatAt = p.alive && Math.random() < Math.min(1, 10 / Math.max(1, talkers)) ? now + rnd(3800, 9000) : 0;
     p.ai.voteAt = m.discussEnd + rnd(1500, Math.min(12000, Math.max(2000, m.voteEnd - m.discussEnd - 3000)));
     p.ai.saidMore = false;
   }

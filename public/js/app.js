@@ -358,7 +358,7 @@
       case 'emote': App.emotes.set(m.id, { e: m.e, t: now() }); Sfx.emote(); break;
       case 'countdown': onCountdown(m); break;
       case 'devResult': onDevResult(m); break;
-      case 'devState': Object.assign(App.dev, { noclip: m.noclip, speed: m.speed, nocd: m.nocd, frozen: m.frozen, role: m.role }); renderDev(); updateDevUi(); break;
+      case 'devState': Object.assign(App.dev, { noclip: m.noclip, speed: m.speed, nocd: m.nocd, frozen: m.frozen, role: m.role, impostors: m.impostors }); renderDev(); updateDevUi(); break;
       case 'devRoles': App.devRoles = m.roles || {}; break;
     }
   }
@@ -452,7 +452,7 @@
     if (!r) return;
     $('#codeText').textContent = r.code;
     const n = r.players.length;
-    $('#lbCount').textContent = `${n}/${r.settings.maxPlayers}`;
+    $('#lbCount').textContent = n > r.settings.maxPlayers ? `${n} 🤪` : `${n}/${r.settings.maxPlayers}`;
     const host = r.hostId === App.you;
     const st = $('#lbStart');
     st.style.display = host ? '' : 'none';
@@ -1099,7 +1099,7 @@
       const p = App.meta.get(id) || {};
       const alive = M.alive.has(id);
       const nameImp = (G.role === 'impostor' && G.mates.has(id)) ? 'imp' : '';
-      const voters = M.results ? (M.results.voters[id] || []).map((c, i) => `<img style="animation-delay:${0.2 + i * 0.25}s" src="${c === 'anon' ? beanImg('gray', 'none', 40, { noShadow: true }) : beanImg(c, 'none', 40, { noShadow: true })}">`).join('') : '';
+      const voters = M.results ? (M.results.voters[id] || []).map((c, i) => `<img style="animation-delay:${0.2 + Math.min(i * 0.25, 2.5)}s" src="${c === 'anon' ? beanImg('gray', 'none', 40, { noShadow: true }) : beanImg(c, 'none', 40, { noShadow: true })}">`).join('') : '';
       return `<div class="vcard ${alive ? '' : 'dead'} ${id === App.you ? 'me' : ''} ${M.picking === id ? 'picking' : ''}" data-id="${id}">
         ${id === M.caller ? `<span class="tag">${M.kind === 'report' ? '📢 REPORTÓ' : '🚨 CONVOCÓ'}</span>` : ''}
         <img src="${beanImg(p.color, p.hat, 80, { noShadow: true, ghost: false })}">
@@ -1109,7 +1109,7 @@
         <div class="voters">${voters}</div>
       </div>`;
     }).join('');
-    $('#skipVoters').innerHTML = M.results ? (M.results.voters.skip || []).map((c, i) => `<img style="animation-delay:${0.2 + i * 0.25}s" src="${beanImg(c === 'anon' ? 'gray' : c, 'none', 40, { noShadow: true })}">`).join('') : '';
+    $('#skipVoters').innerHTML = M.results ? (M.results.voters.skip || []).map((c, i) => `<img style="animation-delay:${0.2 + Math.min(i * 0.25, 2.5)}s" src="${beanImg(c === 'anon' ? 'gray' : c, 'none', 40, { noShadow: true })}">`).join('') : '';
     $('#skipBtn').disabled = !canVote;
     $$('#voteGrid .vcard').forEach(card => card.addEventListener('click', e => {
       const id = card.dataset.id;
@@ -1157,7 +1157,7 @@
     M.picking = null;
     renderVoteCards();
     const n = Object.values(m.voters).reduce((a, v) => a + v.length, 0);
-    for (let i = 0; i < n; i++) setTimeout(() => Sfx.reveal(), 200 + i * 250);
+    for (let i = 0; i < Math.min(n, 12); i++) setTimeout(() => Sfx.reveal(), 200 + i * 250);
   }
 
   function onEject(m) {
@@ -1636,7 +1636,14 @@
       const mode = G ? G.mode : App.room.settings.mode;
       if (lobby) {
         h += sec('Partida');
-        h += `<div class="dev-row">${chip('start', '▶ Empezar ya', 'green')}${chip('bots:3', '🤖 +3 bots')}${chip('bots:1', '🤖 +1 bot')}</div>`;
+        const nb = App.room.players.filter(p => p.bot).length;
+        h += `<div class="dev-row">${chip('start', '▶ Empezar ya', 'green')}${chip('bots:1', '🤖 +1')}${chip('bots:3', '🤖 +3')}${chip('bots:10', '🤖 +10')}${chip('bots:25', '🤖 +25')}</div>`;
+        h += `<div class="dev-row" style="margin-top:6px">${chip('bots:100', '🤪 MODO LOCURA (100 bots)', 'red')}${chip('clearbots', '🧹 Quitar bots')}</div>`;
+        h += `<p class="dev-note">Bots en la sala: <b>${nb}</b> / 100</p>`;
+        if (mode === 'classic') {
+          h += sec('Impostores en la próxima partida');
+          h += `<div class="dev-row">${[1, 2, 3, 5, 10, 20].map(n => chip('imps:' + n, '🔪 ' + n, (D.impostors || 0) === n ? 'sel' : '')).join('')}</div>`;
+        }
         h += `<div class="dev-row" style="margin-top:6px">${['classic', 'hideseek', 'race'].map(m => chip('mode:' + m, S.MODES[m].name, mode === m ? 'sel' : '')).join('')}</div>`;
       }
       const roles = mode === 'classic' ? ['crew', 'impostor', 'sheriff', 'engineer'] : mode === 'hideseek' ? ['hider', 'seeker'] : [];
@@ -1690,6 +1697,8 @@
       case 'newroom': createTestRoom(); break;
       case 'start': devCmd('start'); toggleDev(false); break;
       case 'bots': devCmd('bots', { n: +v }); break;
+      case 'clearbots': devCmd('clearbots'); break;
+      case 'imps': devCmd('impostors', { n: +v }); break;
       case 'mode': devCmd('mode', { mode: v }); break;
       case 'role': devCmd('role', { role: v }); break;
       case 'noclip': devCmd('noclip', { on: !App.dev.noclip }); break;

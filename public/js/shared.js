@@ -44,7 +44,7 @@
     { id: 'tophat', name: 'Chistera' },
     { id: 'beanie', name: 'Gorro' },
     { id: 'antenna', name: 'Antena' },
-    { id: 'shein', name: 'Bolsa Shein' },
+    { id: 'temu', name: 'Bolsa Temu' },
   ];
 
   const PETS = [
@@ -156,7 +156,7 @@
     R(600, 1880, 1740, 2000),  // pasillo inferior
     R(1300, 1800, 1420, 1900), // entrada electricidad
     R(1920, 800, 2040, 1380),  // cafetería-almacén
-    R(2020, 1280, 2360, 1400), // entrada administración
+    R(2020, 1210, 2360, 1320), // entrada administración (separada del almacén)
     R(2420, 400, 2840, 520),   // cafetería-armas
     R(3000, 660, 3120, 1700),  // pasillo derecho
     R(2920, 920, 3020, 1040),  // entrada O2

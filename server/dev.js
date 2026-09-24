@@ -96,7 +96,7 @@ function killPlayer(room, target) {
 function devState(room, p) {
   return {
     t: 'devState', solo: room.devAllowed(p), role: p.devRole || null,
-    noclip: !!p.devNoclip, speed: p.devSpeed || 1, nocd: !!p.devNoCd, frozen: !!room.botsFrozen,
+    noclip: !!p.devNoclip, speed: p.devSpeed || 1, nocd: !!p.devNoCd, frozen: !!room.botsFrozen, impostors: room.devImpostors || null,
   };
 }
 
@@ -155,11 +155,27 @@ function handle(room, p, msg) {
       room.startGame(p);
       break;
     case 'bots': {
+      // modo locura: hasta 100 bots, sin importar el máximo de la sala
       if (inGame) return;
-      const n = Math.max(1, Math.min(10, Number(msg.n) || 1));
-      for (let i = 0; i < n; i++) room.handleLobby(p, { t: 'addBot' });
+      const MAX_BOTS = 100;
+      const have = room.active().filter(q => q.bot).length;
+      const n = Math.max(0, Math.min(MAX_BOTS - have, Number(msg.n) || 1));
+      for (let i = 0; i < n; i++) room.addBot();
+      room.broadcastRoom();
+      if (n === 0) toast('🤖 Ya tienes el máximo: 100 bots');
+      else if (have + n >= 50) toast(`🤪 MODO LOCURA: ${have + n} bots`);
       break;
     }
+    case 'clearbots': {
+      if (inGame) return;
+      for (const q of [...room.players.values()]) if (q.bot) room.players.delete(q.id);
+      room.broadcastRoom();
+      break;
+    }
+    case 'impostors':
+      room.devImpostors = Math.max(1, Math.min(20, Number(msg.n) || 1));
+      toast(`🔪 ${room.devImpostors} impostor(es) en la próxima partida (si hay jugadores suficientes)`);
+      break;
     case 'mode':
       if (inGame || !S.MODES[msg.mode]) return;
       room.handleLobby(p, { t: 'settings', settings: Object.assign({}, room.settings, { mode: msg.mode }) });

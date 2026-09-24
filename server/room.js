@@ -108,11 +108,21 @@ class Room {
     return p;
   }
 
+  addBot() {
+    const used = new Set(this.active().map(q => q.name));
+    let name = BOT_NAMES.find(n => !used.has(n));
+    for (let k = 1; !name; k++) if (!used.has('Bot ' + k)) name = 'Bot ' + k;
+    const hats = S.HATS.map(h => h.id);
+    const pets = S.PETS.map(h => h.id);
+    return this.newMember({ id: 'bot_' + Date.now().toString(36) + (++this.botCounter), name, bot: true, color: this.freeColor(), hat: hats[Math.floor(Math.random() * hats.length)], pet: Math.random() < 0.5 ? pets[Math.floor(Math.random() * pets.length)] : 'none' });
+  }
+
   freeColor(pref) {
     const used = new Set(this.active().map(p => p.color));
     if (pref && !used.has(pref)) return pref;
     const free = S.COLORS.filter(c => !used.has(c.id));
-    return (free.length ? free[Math.floor(Math.random() * free.length)] : S.COLORS[0]).id;
+    const pool = free.length ? free : S.COLORS; // con más de 18 jugadores se repiten colores
+    return pool[Math.floor(Math.random() * pool.length)].id;
   }
 
   removePlayer(id, reason) {
@@ -183,11 +193,7 @@ class Room {
       case 'addBot': {
         if (!isHost || this.phase !== 'lobby') return;
         if (this.active().length >= this.settings.maxPlayers) return send(p, { t: 'toast', text: 'La sala está llena.' });
-        const used = new Set(this.active().map(q => q.name));
-        const name = BOT_NAMES.find(n => !used.has(n)) || ('Bot' + (++this.botCounter));
-        const hats = S.HATS.map(h => h.id);
-        const pets = S.PETS.map(h => h.id);
-        this.newMember({ id: 'bot_' + Date.now().toString(36) + (++this.botCounter), name, bot: true, color: this.freeColor(), hat: hats[Math.floor(Math.random() * hats.length)], pet: Math.random() < 0.5 ? pets[Math.floor(Math.random() * pets.length)] : 'none' });
+        this.addBot();
         this.broadcastRoom();
         return;
       }
@@ -256,7 +262,8 @@ class Room {
     }
     let nImp = 0;
     if (s.mode === 'classic') {
-      nImp = Math.min(s.impostors, Math.max(1, Math.floor((all.length - 1) / 2)));
+      const want = this.devSolo() && this.devImpostors ? this.devImpostors : s.impostors;
+      nImp = Math.min(want, Math.max(1, Math.floor((all.length - 1) / 2)));
     } else if (s.mode === 'hideseek') nImp = 1;
 
     const now = Date.now();
