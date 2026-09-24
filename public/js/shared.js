@@ -134,7 +134,7 @@
     { id: 'upperEngine', name: 'Motor superior', r: R(200, 300, 640, 760), floor: 'metal' },
     { id: 'reactor', name: 'Reactor', r: R(60, 960, 480, 1440), floor: 'reactor' },
     { id: 'lowerEngine', name: 'Motor inferior', r: R(200, 1640, 640, 2100), floor: 'metal' },
-    { id: 'security', name: 'Seguridad', r: R(900, 1000, 1180, 1300), floor: 'dark' },
+    { id: 'security', name: 'Seguridad', r: R(880, 1100, 1160, 1400), floor: 'dark' },
     { id: 'medbay', name: 'Enfermería', r: R(1060, 640, 1440, 1000), floor: 'med' },
     { id: 'cafeteria', name: 'Cafetería', r: R(1640, 120, 2440, 820), floor: 'caf' },
     { id: 'weapons', name: 'Armas', r: R(2820, 240, 3280, 680), floor: 'dark' },
@@ -152,7 +152,7 @@
     R(1180, 520, 1300, 660),   // entrada enfermería
     R(700, 520, 820, 1960),    // pasillo izquierdo
     R(460, 1140, 720, 1260),   // entrada reactor
-    R(800, 1100, 920, 1220),   // entrada seguridad
+    R(800, 1200, 900, 1320),   // entrada seguridad
     R(600, 1880, 1740, 2000),  // pasillo inferior
     R(1300, 1800, 1420, 1900), // entrada electricidad
     R(1920, 800, 2040, 1380),  // cafetería-almacén
@@ -170,7 +170,7 @@
     { id: 'caf_e', room: 'cafeteria', r: R(2420, 400, 2460, 520), dir: 'v' },
     { id: 'caf_s', room: 'cafeteria', r: R(1920, 800, 2040, 840), dir: 'h' },
     { id: 'med', room: 'medbay', r: R(1180, 620, 1300, 660), dir: 'h' },
-    { id: 'sec', room: 'security', r: R(880, 1100, 920, 1220), dir: 'v' },
+    { id: 'sec', room: 'security', r: R(860, 1200, 900, 1320), dir: 'v' },
     { id: 'elec', room: 'electrical', r: R(1300, 1820, 1420, 1860), dir: 'h' },
     { id: 'sto_w', room: 'storage', r: R(1700, 1880, 1740, 2000), dir: 'v' },
     { id: 'sto_n', room: 'storage', r: R(1920, 1340, 2040, 1380), dir: 'h' },
@@ -197,7 +197,7 @@
     { r: R(3870, 1130, 3940, 1260), kind: 'navConsole' },
     { r: R(1090, 700, 1150, 800), kind: 'bed' },
     { r: R(1090, 840, 1150, 940), kind: 'bed' },
-    { r: R(940, 1025, 1140, 1060), kind: 'secDesk' },
+    { r: R(920, 1125, 1120, 1160), kind: 'secDesk' },
   ];
 
   const SHIP_VENTS = [
@@ -205,7 +205,7 @@
     { id: 're1', x: 420, y: 1040, links: ['ue'] },
     { id: 're2', x: 420, y: 1380, links: ['le'] },
     { id: 'le', x: 360, y: 1700, links: ['re2'] },
-    { id: 'sec', x: 1120, y: 1250, links: ['med', 'elec'] },
+    { id: 'sec', x: 1100, y: 1350, links: ['med', 'elec'] },
     { id: 'med', x: 1380, y: 940, links: ['sec', 'elec'] },
     { id: 'elec', x: 1240, y: 1600, links: ['sec', 'med'] },
     { id: 'caf', x: 2380, y: 770, links: ['adm', 'hall'] },
@@ -399,7 +399,7 @@
     roomAt, dist, buildVisionGrid, buildWalkGrid, lineOfSight, spawnPoints,
     SABOTAGE_TIMES: { reactor: 45, o2: 45, lights: 0 },
     SABOTAGE_COOLDOWN: 30, DOOR_TIME: 10, DOOR_COOLDOWN: 25,
-    ADMIN_TABLE: { x: 2535, y: 1420 }, SECURITY_DESK: { x: 1040, y: 1110 },
+    ADMIN_TABLE: { x: 2535, y: 1420 }, SECURITY_DESK: { x: 1020, y: 1210 },
     CAMERAS: [{ x: 1140, y: 480, name: 'Pasillo superior' }, { x: 760, y: 1500, name: 'Pasillo izquierdo' }, { x: 3060, y: 1180, name: 'Pasillo derecho' }, { x: 2240, y: 1940, name: 'Pasillo inferior' }],
     ENGINEER_VENT_TIME: 10, ENGINEER_VENT_COOLDOWN: 15,
     INTERACT_RANGE: 110, REPORT_RANGE: 190, BUTTON_RANGE: 170, VENT_RANGE: 90,
