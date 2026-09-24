@@ -40,7 +40,7 @@ function hashPassword(password, salt) {
 
 function publicUser(u) {
   return {
-    id: u.id, username: u.username, color: u.color, hat: u.hat, pet: u.pet || 'none',
+    id: u.id, username: u.username, color: u.color, hat: u.hat, pet: u.pet || 'none', dev: !!u.dev,
     stats: u.stats,
   };
 }
@@ -108,6 +108,20 @@ function updateProfile(u, data) {
   save();
 }
 
+function setDev(u, on) {
+  u.dev = !!on;
+  save();
+}
+
+// Código del modo developer: se comprueba solo en el servidor.
+// Puedes cambiarlo con la variable de entorno DEV_CODE.
+function checkDevCode(code) {
+  const want = String(process.env.DEV_CODE || '314253');
+  const got = String(code || '');
+  if (got.length !== want.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(got), Buffer.from(want));
+}
+
 function addStats(userId, delta) {
   for (const k in db.users) {
     const u = db.users[k];
@@ -121,4 +135,4 @@ function addStats(userId, delta) {
 
 load();
 
-module.exports = { register, login, byToken, logout, updateProfile, publicUser, addStats };
+module.exports = { register, login, byToken, logout, updateProfile, publicUser, addStats, setDev, checkDevCode };

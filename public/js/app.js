@@ -320,7 +320,7 @@
       case 'hello':
         App.connected = true;
         $('#conn').classList.remove('show');
-        App.user = m.user; renderHome();
+        App.user = m.user; renderHome(); updateDevUi();
         if (App.pendingJoin && !App.room) { send({ t: 'join', code: App.pendingJoin }); App.pendingJoin = null; }
         break;
       case 'authfail': logout(); toast('Tu sesión expiró. Inicia sesión otra vez.', true); break;
@@ -357,6 +357,9 @@
       case 'gameover': onGameOver(m); break;
       case 'emote': App.emotes.set(m.id, { e: m.e, t: now() }); Sfx.emote(); break;
       case 'countdown': onCountdown(m); break;
+      case 'devResult': onDevResult(m); break;
+      case 'devState': Object.assign(App.dev, { noclip: m.noclip, speed: m.speed, nocd: m.nocd, frozen: m.frozen, role: m.role }); renderDev(); updateDevUi(); break;
+      case 'devRoles': App.devRoles = m.roles || {}; break;
     }
   }
 
@@ -405,6 +408,7 @@
     for (const id of before) if (!m.players.find(p => p.id === id)) { App.players.delete(id); Sfx.leave(); }
     if (m.phase === 'lobby' && App.G && !App.G.over) { /* sigue la partida hasta el mensaje gameover */ }
     updateLobbyHud();
+    updateDevUi(); renderDev();
     if ($('#mRules').classList.contains('show')) renderRules();
     if ($('#mCustom').classList.contains('show')) renderCustomize();
   }
@@ -582,6 +586,8 @@
     $$('.modal.show').forEach(x => x.classList.remove('show'));
     hideGameOverlays(true);
     setupHud();
+    App.devRoles = {};
+    if (App.dev.xray && devSolo()) send({ t: 'dev', cmd: 'reveal' });
     if (m.intro) roleReveal(m.introIn);
     else if (!G.alive) $('#ghostTip').classList.add('show');
   }
@@ -689,6 +695,7 @@
     show('#actSabotage', imp);
     updateChatButton();
     updateTaskPanel(true);
+    updateDevUi(); renderDev();
   }
 
   function updateChatButton() {
@@ -1161,6 +1168,13 @@
     if (m.id === App.you) G.alive = false;
     const p = m.id ? App.meta.get(m.id) : null;
     if (p) p.alive = false;
+    playEjectAnim(m, () => {
+      if (App.G && !App.G.alive && m.id === App.you) { $('#ghostTip').classList.add('show'); setTimeout(() => $('#ghostTip').classList.remove('show'), 6000); }
+      updateChatButton();
+    });
+  }
+
+  function playEjectAnim(m, done) {
     const fx = $('#ejectFx');
     fx.classList.add('show');
     $('#ejLine1').textContent = ''; $('#ejLine2').textContent = '';
@@ -1201,8 +1215,7 @@
     setTimeout(() => {
       fx.classList.remove('show');
       if (App.fx && App.fx.kind === 'eject') App.fx = null;
-      if (App.G && !App.G.alive && m.id === App.you) { $('#ghostTip').classList.add('show'); setTimeout(() => $('#ghostTip').classList.remove('show'), 6000); }
-      updateChatButton();
+      if (done) done();
     }, 7300);
   }
 
@@ -1265,6 +1278,22 @@
     const fx = $('#gameOver');
     const delay = App.fx && App.fx.kind === 'kill' ? 2600 : (App.fx && App.fx.kind === 'eject' ? 1500 : 300);
     setTimeout(() => {
+      showGameOverScreen(m, won);
+      App.G = null;
+      App.mapId = 'lobby';
+      App.me.init = false;
+      App.bodies = [];
+      App.closedDoors = [];
+      App.players.clear();
+      for (const p of App.meta.values()) p.alive = true;
+      setupHud();
+      updateLobbyHud();
+    }, delay);
+  }
+
+  function showGameOverScreen(m, won) {
+    const fx = $('#gameOver');
+    {
       hideGameOverlays(false);
       fx.classList.add('show');
       const title = $('#goTitle');
@@ -1277,16 +1306,7 @@
         `<div class="lu ${p.id === App.you ? 'me' : ''}" style="animation-delay:${0.3 + i * 0.1}s"><img src="${beanImg(p.color, p.hat, 200, { ghost: !p.alive })}"><span style="color:${p.role === 'impostor' || p.role === 'seeker' ? '#ff453a' : p.sub === 'sheriff' ? '#ffd60a' : p.sub === 'engineer' ? '#ff9f0a' : '#fff'}">${esc(p.name)}${p.sub ? `<small class="go-sub">${p.sub === 'sheriff' ? 'Sheriff' : 'Ingeniero'}</small>` : ''}</span></div>`).join('');
       $('#goRank').innerHTML = m.ranking ? m.ranking.map((r, i) => { const p = m.players.find(x => x.id === r.id) || {}; return `<div><span>${i + 1}. ${esc(p.name || '?')}</span><span>${r.done}/${r.total}</span></div>`; }).join('') : '';
       if (won) { Sfx.victory(); Fx.confettiDom(fx); } else Sfx.defeat();
-      App.G = null;
-      App.mapId = 'lobby';
-      App.me.init = false;
-      App.bodies = [];
-      App.closedDoors = [];
-      App.players.clear();
-      for (const p of App.meta.values()) p.alive = true;
-      setupHud();
-      updateLobbyHud();
-    }, delay);
+    }
   }
   $('#goContinue').addEventListener('click', () => { $('#gameOver').classList.remove('show'); Sfx.swoosh(); });
 
@@ -1345,13 +1365,14 @@
 
   // ================================================================ mapa
   let mapSab = false;
-  let mapAdmin = false;
+  let mapAdmin = false, mapTp = false;
   function openMap(sab) {
     const G = App.G;
     if (!G) return;
     mapAdmin = sab === 'admin';
+    mapTp = sab === 'tp';
     mapSab = sab === true && G.role === 'impostor';
-    $('#mapTitle').textContent = mapAdmin ? 'Administración · tripulantes por sala' : mapSab ? 'Sabotaje' : 'Mapa de la nave';
+    $('#mapTitle').textContent = mapTp ? '🛠️ Toca el mapa para teletransportarte' : mapAdmin ? 'Administración · tripulantes por sala' : mapSab ? 'Sabotaje' : 'Mapa de la nave';
     $('#mapOverlay').classList.add('show');
     Sfx.open();
     renderSabButtons();
@@ -1359,6 +1380,14 @@
   function closeMap() { if ($('#mapOverlay').classList.contains('show')) { $('#mapOverlay').classList.remove('show'); Sfx.close(); } }
   $('#btnMap').addEventListener('click', () => $('#mapOverlay').classList.contains('show') ? closeMap() : openMap(false));
   $('#mapClose').addEventListener('click', closeMap);
+  $('#mapCanvas').addEventListener('click', e => {
+    if (!mapTp) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    const x = MAP_BOUNDS.x + (e.clientX - r.left) / r.width * MAP_BOUNDS.w;
+    const y = MAP_BOUNDS.y + (e.clientY - r.top) / r.height * MAP_BOUNDS.h;
+    send({ t: 'dev', cmd: 'tp', x, y });
+    closeMap();
+  });
   $('#mapOverlay').addEventListener('pointerdown', e => { if (e.target.id === 'mapOverlay') closeMap(); });
 
   const MAP_BOUNDS = { x: 20, y: 60, w: 4000, h: 2330 };
@@ -1486,6 +1515,7 @@
       case 'KeyQ': doKill(); break;
       case 'KeyV': doVent(); break;
       case 'KeyG': if (G && G.role === 'impostor') openMap(true); break;
+      case 'F2': e.preventDefault(); if (isDev()) toggleDev(); break;
       case 'Digit1': case 'Digit2': case 'Digit3': case 'Digit4': case 'Digit5': case 'Digit6': case 'Digit7': case 'Digit8': sendEmote(+e.code.slice(5) - 1); break;
       case 'Tab': case 'KeyM': e.preventDefault(); if (G) { $('#mapOverlay').classList.contains('show') ? closeMap() : openMap(false); } break;
       case 'Enter': if ($('#btnChat').style.display !== 'none' || (G && G.phase === 'meeting')) { e.preventDefault(); toggleChat(true); } break;
@@ -1523,6 +1553,198 @@
   })();
 
   $('#btnGear').addEventListener('click', openSettings);
+
+
+  // ================================================================ modo developer
+  App.dev = { noclip: false, speed: 1, nocd: false, frozen: false, nofog: false, xray: false, role: null };
+  App.devRoles = {};
+  function isDev() { return !!(App.user && App.user.dev); }
+  function devSolo() { return isDev() && !!App.room && App.room.players.filter(p => !p.bot).length === 1; }
+  function devCmd(cmd, extra) { send(Object.assign({ t: 'dev', cmd }, extra || {})); }
+
+  function openDevModal() {
+    $('#devLoginBox').style.display = isDev() ? 'none' : '';
+    $('#devOnBox').style.display = isDev() ? '' : 'none';
+    $('#devCode').value = ''; $('#devError').textContent = '';
+    openModal('mDev');
+    if (!isDev()) setTimeout(() => $('#devCode').focus(), 350);
+  }
+  $('#mDevBtn').addEventListener('click', openDevModal);
+  $('#devCode').addEventListener('input', e => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6); });
+  $('#devCode').addEventListener('keydown', e => { if (e.key === 'Enter') $('#devGo').click(); });
+  $('#devGo').addEventListener('click', () => {
+    const c = $('#devCode').value;
+    if (c.length !== 6) { $('#devError').textContent = 'El código tiene 6 números.'; Sfx.error(); return; }
+    send({ t: 'devLogin', code: c });
+  });
+  $('#devOff').addEventListener('click', () => send({ t: 'devLogout' }));
+  $('#devTestRoom').addEventListener('click', () => { closeModal('mDev'); createTestRoom(); });
+  function createTestRoom() { App.pendingBots = 5; send({ t: 'create', mode: 'classic', isPublic: false }); }
+
+  function onDevResult(m) {
+    if (!m.ok) {
+      const e = $('#devError'); e.textContent = m.text; e.classList.remove('shake'); void e.offsetWidth; e.classList.add('shake');
+      Sfx.error(); return;
+    }
+    App.user = m.user;
+    renderHome(); updateDevUi();
+    closeModal('mDev');
+    if (m.off) { toast('Modo developer desactivado'); toggleDev(false); return; }
+    Sfx.success();
+    toast('🛠️ Modo developer activado. Pulsa el botón </> o F2 dentro de una sala.');
+    if (App.room) devCmd('state');
+  }
+
+  function updateDevUi() {
+    const on = isDev();
+    $('#mDevLabel').textContent = on ? 'Developer ✓' : 'Modo developer';
+    $('#btnDev').classList.toggle('on', on);
+    $('#devBadge').classList.toggle('show', devSolo());
+    if (!on) $('#devPanel').classList.remove('show');
+  }
+
+  function toggleDev(force) {
+    const panel = $('#devPanel');
+    const open = force !== undefined ? force : !panel.classList.contains('show');
+    if (open && !isDev()) return;
+    panel.classList.toggle('show', open);
+    if (open) { if (App.room) devCmd('state'); renderDev(); Sfx.open(); }
+  }
+  $('#btnDev').addEventListener('click', () => toggleDev());
+  $('#devClose').addEventListener('click', () => toggleDev(false));
+
+  const GAME_NAMES = {
+    wires: 'Cables', card: 'Tarjeta', garbage: 'Basura', asteroids: 'Asteroides', filter: 'Filtro O2', steering: 'Dirección',
+    shields: 'Escudos', manifolds: 'Colectores', calibrate: 'Distribuidor', align: 'Alinear motor', download: 'Descargar datos',
+    upload: 'Subir datos', scan: 'Escaneo médico', course: 'Trazar rumbo', fuel: 'Combustible', simon: 'Arrancar reactor',
+    lights: 'Luces (sabotaje)', hand: 'Reactor (sabotaje)', keypad: 'O2 (sabotaje)', emergency: 'Botón de emergencia',
+  };
+  const ROLE_NAMES = { crew: 'Tripulante', impostor: 'Impostor', sheriff: 'Sheriff', engineer: 'Ingeniero', hider: 'Escondido', seeker: 'Buscador', random: 'Aleatorio' };
+
+  function renderDev() {
+    if (!$('#devPanel').classList.contains('show')) return;
+    const G = App.G, D = App.dev;
+    const inRoom = !!App.room, lobby = inRoom && !G, solo = devSolo();
+    const chip = (d, label, cls) => `<button class="dchip ${cls || ''}" data-d="${d}">${label}</button>`;
+    const sec = t => `<div class="dev-sec">${t}</div>`;
+    let h = '';
+    if (!inRoom) h += `<div class="dev-status no">Crea una sala de pruebas para usar los poderes.</div><div class="dev-row">${chip('newroom', '🧪 Crear sala de pruebas', 'green')}</div>`;
+    else if (solo) h += `<div class="dev-status ok">✅ Sala de pruebas: todos los poderes activos</div>`;
+    else h += `<div class="dev-status no">⛔ Hay otros jugadores en la sala. Los poderes se desactivan para que la partida sea justa. Solo puedes probar minijuegos y animaciones.</div>`;
+
+    if (inRoom && solo) {
+      const mode = G ? G.mode : App.room.settings.mode;
+      if (lobby) {
+        h += sec('Partida');
+        h += `<div class="dev-row">${chip('start', '▶ Empezar ya', 'green')}${chip('bots:3', '🤖 +3 bots')}${chip('bots:1', '🤖 +1 bot')}</div>`;
+        h += `<div class="dev-row" style="margin-top:6px">${['classic', 'hideseek', 'race'].map(m => chip('mode:' + m, S.MODES[m].name, mode === m ? 'sel' : '')).join('')}</div>`;
+      }
+      const roles = mode === 'classic' ? ['crew', 'impostor', 'sheriff', 'engineer'] : mode === 'hideseek' ? ['hider', 'seeker'] : [];
+      if (roles.length) {
+        const cur = G ? (G.sub || G.role) : (D.role || 'random');
+        h += sec(lobby ? 'Mi rol en la próxima partida' : 'Mi rol (cambia al instante)');
+        h += `<div class="dev-row">${(lobby ? ['random'].concat(roles) : roles).map(r => chip('role:' + r, ROLE_NAMES[r], cur === r ? 'sel' : '')).join('')}</div>`;
+      }
+      h += sec('Movimiento');
+      h += `<div class="dev-row">${chip('noclip', '👻 Atravesar paredes', D.noclip ? 'sel' : '')}${[1, 2, 3].map(v => chip('speed:' + v, v + 'x', D.speed === v ? 'sel' : '')).join('')}</div>`;
+      if (G) {
+        h += `<div class="dev-row" style="margin-top:6px">${chip('tpmap', '📍 Teletransporte en el mapa')}</div>`;
+        h += `<div class="dev-row" style="margin-top:6px">${S.SHIP.rooms.map(r => chip('tproom:' + r.id, r.name)).join('')}</div>`;
+        h += sec('Visión');
+        h += `<div class="dev-row">${chip('nofog', '🔦 Ver todo el mapa', D.nofog ? 'sel' : '')}${chip('xray', '🩻 Ver roles de todos', D.xray ? 'sel' : '')}</div>`;
+        h += sec('Poderes');
+        h += `<div class="dev-row">${chip('nocd', '⚡ Sin enfriamiento', D.nocd ? 'sel' : '')}${chip('freeze', '🧊 Congelar bots', D.frozen ? 'sel' : '')}${chip('revive', '✨ Revivir a todos', 'green')}</div>`;
+        const victims = App.room.players.filter(p => p.id !== App.you && (App.meta.get(p.id) || {}).alive !== false);
+        if (victims.length) h += `<div class="dev-row" style="margin-top:6px">${victims.map(p => chip('kill:' + p.id, '💀 ' + esc(p.name), 'red')).join('')}</div>`;
+        h += sec('Tareas');
+        h += `<div class="dev-row">${chip('tasks:mine', '✅ Completar mis tareas')}${chip('tasks:all', '🏁 Completar todas', 'green')}</div>`;
+        if (mode === 'classic') {
+          h += sec('Sabotajes');
+          h += `<div class="dev-row">${chip('sab:lights', '💡 Luces')}${chip('sab:reactor', '☢️ Reactor')}${chip('sab:o2', '🫁 O2')}${chip('fixsab', '🔧 Reparar todo', 'green')}</div>`;
+          const doorRooms = [...new Set(S.SHIP.doors.map(d => d.room))];
+          h += `<div class="dev-row" style="margin-top:6px">${doorRooms.map(r => chip('door:' + r, '🚪 ' + (S.SHIP.rooms.find(x => x.id === r) || {}).name)).join('')}</div>`;
+          h += sec('Reuniones');
+          h += `<div class="dev-row">${chip('meeting', '🚨 Convocar reunión')}${chip('endvote', '⏱️ Terminar votación')}</div>`;
+        }
+        h += sec('Terminar partida');
+        h += `<div class="dev-row">${chip('win:crew', mode === 'hideseek' ? '🙈 Ganan escondidos' : '🧑‍🚀 Gana tripulación', 'green')}${chip('win:impostor', mode === 'hideseek' ? '🔎 Gana buscador' : '🔪 Ganan impostores', 'red')}</div>`;
+      }
+    }
+    h += sec('Probar minijuegos (no cuentan)');
+    h += `<div class="dev-row">${Object.keys(GAME_NAMES).map(g => chip('test:' + g, GAME_NAMES[g])).join('')}</div>`;
+    if (inRoom) {
+      h += sec('Probar animaciones');
+      h += `<div class="dev-row">${G ? chip('anim:role', '🎭 Revelar rol') : ''}${chip('anim:kill', '🔪 Muerte')}${chip('anim:meeting', '📢 Cadáver')}${chip('anim:emergency', '🚨 Emergencia')}${chip('anim:eject', '🚀 Expulsión')}${chip('anim:win', '🏆 Victoria')}${chip('anim:lose', '💔 Derrota')}${chip('anim:confetti', '🎉 Confeti')}</div>`;
+    }
+    h += `<p class="dev-note">Atajo: F2 abre y cierra este panel.</p>`;
+    $('#devBody').innerHTML = h;
+  }
+
+  $('#devBody').addEventListener('click', e => {
+    const b = e.target.closest('[data-d]');
+    if (!b) return;
+    const d = b.dataset.d, i = d.indexOf(':');
+    const a = i < 0 ? d : d.slice(0, i), v = i < 0 ? '' : d.slice(i + 1);
+    Sfx.tap();
+    switch (a) {
+      case 'newroom': createTestRoom(); break;
+      case 'start': devCmd('start'); toggleDev(false); break;
+      case 'bots': devCmd('bots', { n: +v }); break;
+      case 'mode': devCmd('mode', { mode: v }); break;
+      case 'role': devCmd('role', { role: v }); break;
+      case 'noclip': devCmd('noclip', { on: !App.dev.noclip }); break;
+      case 'speed': devCmd('speed', { v: +v }); break;
+      case 'tpmap': toggleDev(false); openMap('tp'); break;
+      case 'tproom': { const r = S.SHIP.rooms.find(x => x.id === v); if (r) devCmd('tp', { x: r.r.x + r.r.w / 2, y: r.r.y + r.r.h / 2 + 60 }); break; }
+      case 'nofog': App.dev.nofog = !App.dev.nofog; renderDev(); break;
+      case 'xray': App.dev.xray = !App.dev.xray; if (App.dev.xray) devCmd('reveal'); renderDev(); break;
+      case 'nocd': devCmd('nocd', { on: !App.dev.nocd }); break;
+      case 'freeze': devCmd('freeze', { on: !App.dev.frozen }); break;
+      case 'revive': devCmd('revive'); break;
+      case 'kill': devCmd('kill', { id: v }); setTimeout(renderDev, 300); break;
+      case 'tasks': devCmd('tasks', { all: v === 'all' }); break;
+      case 'test': devTestGame(v); break;
+      case 'sab': devCmd('sab', { kind: v }); break;
+      case 'door': devCmd('sab', { kind: 'doors', room: v }); break;
+      case 'fixsab': devCmd('fixsab'); break;
+      case 'meeting': devCmd('meeting'); toggleDev(false); break;
+      case 'endvote': devCmd('endvote'); break;
+      case 'win': devCmd('win', { team: v }); toggleDev(false); break;
+      case 'anim': devAnim(v); break;
+    }
+  });
+
+  function devTestGame(game) {
+    const meta = App.meta.get(App.you);
+    const me = meta || { name: App.user.username, color: App.user.color, hat: App.user.hat };
+    const fakeSab = { switches: [false, true, false, true, false], holds: [false, false], done: [false, false], code: '31425' };
+    toggleDev(false);
+    Tasks.open({ game, title: '🛠️ Prueba · ' + GAME_NAMES[game], fill: game === 'fuel', idx: 0, sab: fakeSab, emergencies: 1, cooldown: 0 }, {
+      me, test: true, send: () => {},
+      complete: () => toast('✅ Minijuego completado (modo prueba: no cuenta en la partida)'),
+    });
+  }
+
+  function devAnim(v) {
+    const meta = App.meta.get(App.you);
+    const me = meta || { name: App.user.username, color: App.user.color, hat: App.user.hat };
+    toggleDev(false);
+    const players = (App.room ? App.room.players : [me]).map(p => ({ id: p.id, name: p.name, color: p.color, hat: p.hat, role: 'crew', alive: true }));
+    switch (v) {
+      case 'role': if (App.G) roleReveal(4500); break;
+      case 'kill': playKillAnim({ color: 'red', hat: 'horns', name: 'Impostor' }, me); break;
+      case 'meeting': meetingSplash({ kind: 'report', caller: App.you, bodyColor: 'lime' }); break;
+      case 'emergency': meetingSplash({ kind: 'emergency', caller: App.you }); break;
+      case 'eject': playEjectAnim({ id: 'preview', color: me.color, hat: me.hat, line1: `${me.name} era el impostor.`, line2: 'Quedan 0 impostores.' }); break;
+      case 'win': case 'lose': {
+        const won = v === 'win';
+        const others = players.filter(p => p.id !== App.you).slice(0, 2).map(p => p.id);
+        showGameOverScreen({ winner: won ? 'crew' : 'impostor', reason: 'Vista previa desde el modo developer', winners: won ? [App.you] : others, players, mode: 'classic' }, won);
+        break;
+      }
+      case 'confetti': Fx.confetti(App.me.x, App.me.y - 60, 80); Sfx.confetti(); break;
+    }
+  }
 
   // ---------------- emotes
   function sendEmote(i) {
@@ -1592,7 +1814,7 @@
     return Math.max(140, r);
   }
 
-  function fogActive() { const G = App.G; return G && G.alive && G.phase === 'play'; }
+  function fogActive() { const G = App.G; if (App.dev.nofog && devSolo()) return false; return G && G.alive && G.phase === 'play'; }
 
   function isPointVisible(x, y) {
     if (!fogActive()) return true;
@@ -1671,8 +1893,10 @@
       if (G && G.role === 'seeker') sp *= G.settings.seekerSpeed * (G.finalHide ? 1.1 : 1);
       const ghost = G && !G.alive;
       if (ghost) sp *= 1.25;
+      const devFree = devSolo() && App.dev.noclip;
+      if (devSolo() && App.dev.speed > 1) sp *= App.dev.speed;
       const dx = ix * sp * dt, dy = iy * sp * dt;
-      if (ghost) { me.x = clamp(me.x + dx, 40, map.w - 40); me.y = clamp(me.y + dy, 40, map.h - 40); }
+      if (ghost || devFree) { me.x = clamp(me.x + dx, 40, map.w - 40); me.y = clamp(me.y + dy, 40, map.h - 40); }
       else { const np = S.moveWithCollision(map, me.x, me.y, dx, dy, App.closedDoors); me.x = np.x; me.y = np.y; }
       if (Math.abs(ix) > 0.1) me.f = ix < 0 ? 1 : 0;
       me.walk += dt * 11 * Math.min(1, Math.hypot(ix, iy) + 0.3);
@@ -1851,6 +2075,10 @@
       let col = '#ffffff';
       if (G && G.role === 'impostor' && (n.me || G.mates.has(n.meta.id))) col = '#ff453a';
       if (G && G.mode === 'hideseek' && n.meta.id === G.seeker) col = '#ff453a';
+      if (G && App.dev.xray && devSolo() && App.devRoles[n.meta.id]) {
+        const r = App.devRoles[n.meta.id];
+        col = r.role === 'impostor' || r.role === 'seeker' ? '#ff453a' : r.sub === 'sheriff' ? '#ffd60a' : r.sub === 'engineer' ? '#ff9f0a' : '#8ee6ff';
+      }
       const hatLift = n.meta.hat && n.meta.hat !== 'none' ? 26 : 0;
       const y = n.y - 88 - hatLift + (n.ghost ? -6 : 0);
       ctx.globalAlpha = n.ghost ? 0.6 : 1;

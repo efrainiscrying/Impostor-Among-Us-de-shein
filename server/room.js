@@ -3,6 +3,7 @@
 const S = require('../public/js/shared.js');
 const auth = require('./auth.js');
 const bots = require('./bots.js');
+const dev = require('./dev.js');
 
 const VGRID = { ship: S.buildVisionGrid(S.SHIP), lobby: S.buildVisionGrid(S.LOBBY) };
 const WGRID = { ship: S.buildWalkGrid(S.SHIP), lobby: S.buildWalkGrid(S.LOBBY) };
@@ -61,6 +62,10 @@ class Room {
   get wgrid() { return WGRID[this.mapId]; }
 
   humans() { return [...this.players.values()].filter(p => !p.bot && !p.left); }
+  // El modo developer solo actúa si el developer es el único humano de la sala
+  devAllowed(p) { return !!(p && p.dev) && this.humans().every(h => h === p); }
+  devSolo() { const h = this.humans(); return h.length === 1 && !!h[0].dev; }
+  sendTo(p, m) { send(p, m); }
   active() { return [...this.players.values()].filter(p => !p.left); }
 
   // ---------------------------------------------------------------- miembros
@@ -72,6 +77,7 @@ class Room {
         try { existing.ws.close(); } catch (e) { /* */ }
       }
       existing.ws = ws;
+      existing.dev = !!user.dev;
       existing.connected = true;
       existing.left = false;
       this.sendJoined(existing);
@@ -83,7 +89,7 @@ class Room {
     if (this.active().length >= this.settings.maxPlayers) return { error: 'La sala está llena.' };
     const p = this.newMember({
       id: user.id, userId: user.id, name: user.username, bot: false,
-      color: this.freeColor(user.color), hat: user.hat || 'none', pet: user.pet || 'none', ws,
+      color: this.freeColor(user.color), hat: user.hat || 'none', pet: user.pet || 'none', ws, dev: !!user.dev,
     });
     this.sendJoined(p);
     this.broadcastRoom();
@@ -270,6 +276,7 @@ class Room {
 
     const order = shuffle(all.slice());
     const impostors = new Set(order.slice(0, nImp).map(p => p.id));
+    dev.applyStartRole(this, all, impostors, nImp);
     const spawns = S.spawnPoints(S.SHIP, all.length);
     const common = shuffle(Object.keys(S.TASKS).filter(k => S.TASKS[k].kind === 'common')).slice(0, s.commonTasks);
     const raceTasks = s.mode === 'race' ? this.pickTasks(common) : null;
@@ -294,6 +301,8 @@ class Room {
       for (let i = 0; i < s.sheriffs && k < crew.length - 1; i++) { crew[k].sub = 'sheriff'; crew[k].killReadyAt = this.introEnd + s.killCooldown * 1000; k++; }
       for (let i = 0; i < s.engineers && k < crew.length; i++) crew[k++].sub = 'engineer';
     }
+    dev.applyStartSub(this, all);
+    if (!this.devSolo()) this.botsFrozen = false;
     this.emergencyReadyAt = this.introEnd + s.emergencyCooldown * 1000;
     if (s.mode === 'hideseek') {
       this.seekerReleaseAt = this.introEnd + 10000;
@@ -359,6 +368,7 @@ class Room {
     if (msg.t === 'chat') return this.onChat(p, msg);
     if (msg.t === 'move') return this.onMove(p, msg);
     if (msg.t === 'emote') return this.onEmote(p, msg.e);
+    if (msg.t === 'dev') return dev.handle(this, p, msg);
     if (this.phase === 'lobby') return this.handleLobby(p, msg);
     switch (msg.t) {
       case 'kill': return this.onKill(p, this.players.get(msg.id));
@@ -379,6 +389,7 @@ class Room {
     let v = S.BASE_SPEED * s.playerSpeed;
     if (p.role === 'seeker') v *= s.seekerSpeed * (this.finalHide ? 1.1 : 1);
     if (!p.alive && this.phase !== 'lobby') v *= 1.25;
+    if (p.devSpeed && this.devAllowed(p)) v *= p.devSpeed;
     return v;
   }
 
@@ -391,6 +402,10 @@ class Room {
     const frozen = this.phase === 'intro' || this.phase === 'meeting' || this.phase === 'eject' || p.inVent ||
       (p.role === 'seeker' && now < this.seekerReleaseAt && this.phase === 'play');
     if (frozen) { p.m = 0; if (Math.hypot(x - p.x, y - p.y) > 2) send(p, { t: 'pos', x: p.x, y: p.y }); return; }
+    if (p.devNoclip && this.devAllowed(p)) {
+      p.x = Math.max(0, Math.min(this.map.w, x)); p.y = Math.max(0, Math.min(this.map.h, y)); p.lastMoveAt = now;
+      return;
+    }
     const dt = Math.min(1, (now - p.lastMoveAt) / 1000);
     const maxD = this.speedOf(p) * dt * 1.6 + 40;
     const d = Math.hypot(x - p.x, y - p.y);
@@ -442,7 +457,7 @@ class Room {
     target.inVent = null;
     this.bodies.push({ id: target.id, color: target.color, x: target.x, y: target.y, at: now });
     p.x = target.x; p.y = target.y;
-    const cd = (s.mode === 'hideseek' ? s.seekerCooldown : s.killCooldown) * 1000;
+    const cd = p.devNoCd && this.devAllowed(p) ? 0 : (s.mode === 'hideseek' ? s.seekerCooldown : s.killCooldown) * 1000;
     p.killReadyAt = now + cd;
     if (sheriff) { p.x = target.x - 60 * (p.x < target.x ? 1 : -1); p.y = target.y; if (!S.canStand(this.map, p.x, p.y, this.closedDoors)) { p.x = target.x; } }
     send(p, { t: 'pos', x: p.x, y: p.y });
@@ -517,7 +532,7 @@ class Room {
     } else if (msg.a === 'exit' && p.inVent) {
       const v = vents.find(v => v.id === p.inVent);
       p.inVent = null;
-      if (eng) p.ventReadyAt = Date.now() + S.ENGINEER_VENT_COOLDOWN * 1000;
+      if (eng) p.ventReadyAt = p.devNoCd && this.devAllowed(p) ? 0 : Date.now() + S.ENGINEER_VENT_COOLDOWN * 1000;
       send(p, { t: 'vent', id: null, cd: eng ? S.ENGINEER_VENT_COOLDOWN * 1000 : 0 });
       this.broadcast({ t: 'ventfx', id: v.id }, q => q !== p);
     }
@@ -529,31 +544,43 @@ class Room {
     if (this.phase !== 'play' || p.role !== 'impostor' || this.settings.mode !== 'classic') return;
     if (msg.kind === 'doors') {
       const room = msg.room;
-      const doors = S.SHIP.doors.filter(d => d.room === room);
-      if (!doors.length || (this.doorReady[room] || 0) > now) return;
+      if ((this.doorReady[room] || 0) > now) return;
       if (this.sab && this.sab.kind !== 'lights') return;
+      if (!this.closeDoorsOf(room)) return;
       this.doorReady[room] = now + S.DOOR_COOLDOWN * 1000;
-      for (const d of doors) if (this.closedDoors.indexOf(d.id) < 0) this.closedDoors.push(d.id);
-      this.pushOutOfDoors(doors);
-      this.doorTimers[room] = now + S.DOOR_TIME * 1000;
-      this.broadcast({ t: 'doors', closed: this.closedDoors, slam: room });
       send(p, { t: 'doorcd', room, in: S.DOOR_COOLDOWN * 1000 });
       return;
     }
     if (this.sab || now < this.sabReadyAt) return;
-    if (msg.kind === 'lights') {
+    this.startSab(msg.kind);
+  }
+
+  closeDoorsOf(room) {
+    const doors = S.SHIP.doors.filter(d => d.room === room);
+    if (!doors.length) return false;
+    for (const d of doors) if (this.closedDoors.indexOf(d.id) < 0) this.closedDoors.push(d.id);
+    this.pushOutOfDoors(doors);
+    this.doorTimers[room] = Date.now() + S.DOOR_TIME * 1000;
+    this.broadcast({ t: 'doors', closed: this.closedDoors, slam: room });
+    return true;
+  }
+
+  startSab(kind) {
+    const now = Date.now();
+    if (kind === 'lights') {
       const sw = [true, true, true, true, true];
       const off = shuffle([0, 1, 2, 3, 4]).slice(0, 2 + Math.floor(Math.random() * 3));
       for (const i of off) sw[i] = false;
       this.sab = { kind: 'lights', switches: sw };
-    } else if (msg.kind === 'reactor') {
+    } else if (kind === 'reactor') {
       this.sab = { kind: 'reactor', endsAt: now + S.SABOTAGE_TIMES.reactor * 1000, holds: [null, null] };
-    } else if (msg.kind === 'o2') {
+    } else if (kind === 'o2') {
       let code = '';
       for (let i = 0; i < 5; i++) code += Math.floor(Math.random() * 10);
       this.sab = { kind: 'o2', endsAt: now + S.SABOTAGE_TIMES.o2 * 1000, done: [false, false], code };
-    } else return;
+    } else return false;
     this.sendSab();
+    return true;
   }
 
   pushOutOfDoors(doors) {
@@ -890,6 +917,7 @@ class Room {
         impostor: p.role === 'impostor' || p.role === 'seeker' ? 1 : 0,
       });
     }
+    this.botsFrozen = false;
     // volver a la sala
     for (const p of all) if (p.left) this.players.delete(p.id);
     this.phase = 'lobby';

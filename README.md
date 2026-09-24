@@ -97,6 +97,20 @@ docker run -p 3000:3000 -v amongus-data:/data among-us-temu
 | Chat | Enter | Botón de chat |
 | Cerrar ventana | Esc | ✕ |
 
+## Modo developer
+
+En el menú principal, **Modo developer** pide un código de 6 números (por defecto `314253`;
+se puede cambiar arrancando el servidor con la variable `DEV_CODE`, por ejemplo
+`DEV_CODE=123456 npm start`). El código se comprueba en el servidor y tiene límite de intentos.
+
+Con el modo activo aparece el botón `</>` (o la tecla **F2**) con un panel para: elegir o cambiar tu
+rol, atravesar paredes, velocidad x2/x3, teletransporte, ver todo el mapa, ver los roles de todos,
+sin enfriamiento, congelar bots, matar/revivir, completar tareas, lanzar y reparar sabotajes,
+convocar reuniones, forzar la victoria, probar cualquier minijuego y ver todas las animaciones.
+
+Los poderes **solo funcionan en salas donde eres el único humano** (tú + bots), así nunca
+afectan a una partida con tus amigos.
+
 ## Estructura
 
 ```
@@ -105,6 +119,7 @@ server/
   auth.js    cuentas (data/users.json)
   room.js    salas y reglas del juego (el servidor decide todo)
   bots.js    inteligencia de los bots (rutas, tareas, cazar, votar, chatear)
+  dev.js     herramientas del modo developer
 public/
   index.html, css/style.css
   js/shared.js  mapa, tareas, colores y ajustes (compartido con el servidor)

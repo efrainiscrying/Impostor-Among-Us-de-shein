@@ -74,6 +74,9 @@ const server = http.createServer(async (req, res) => {
   });
 });
 
+// Intentos del código developer por cuenta (anti fuerza bruta)
+const devTries = new Map();
+
 const wss = new WebSocketServer({ server, path: '/ws', maxPayload: 16 * 1024 });
 
 wss.on('connection', (ws) => {
@@ -123,6 +126,21 @@ wss.on('connection', (ws) => {
         if (room && player && room.phase === 'lobby') room.handle(player, { t: 'look', color: msg.color, hat: msg.hat, pet: msg.pet });
         return;
       case 'rooms': return reply({ t: 'rooms', list: listPublic() });
+      case 'devLogin': {
+        const t = Date.now();
+        const tries = (devTries.get(user.id) || []).filter(x => t - x < 60000);
+        devTries.set(user.id, tries);
+        if (tries.length >= 5) return reply({ t: 'devResult', ok: false, text: 'Demasiados intentos. Espera un minuto.' });
+        tries.push(t);
+        if (!auth.checkDevCode(msg.code)) return reply({ t: 'devResult', ok: false, text: 'Código incorrecto.' });
+        auth.setDev(user, true);
+        if (player) player.dev = true;
+        return reply({ t: 'devResult', ok: true, user: auth.publicUser(user) });
+      }
+      case 'devLogout':
+        auth.setDev(user, false);
+        if (player) { player.dev = false; player.devNoclip = false; player.devSpeed = 1; player.devNoCd = false; player.devRole = null; }
+        return reply({ t: 'devResult', ok: true, off: true, user: auth.publicUser(user) });
       case 'create': {
         leave();
         const r = new Room({ id: user.id }, { mode: msg.mode, isPublic: msg.isPublic });

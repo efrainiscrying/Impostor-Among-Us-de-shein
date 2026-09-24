@@ -525,6 +525,7 @@
           const bx = 70 + i * 75;
           if (inBox(x, y, bx, 160, 50, 240)) { sw[i] = !sw[i]; Sfx.switch(); hooks.send({ t: 'fix', kind: 'lights', idx: i }); }
         });
+        if (hooks.test && sw.every(Boolean)) this.finish();
       },
     };
   };
@@ -547,7 +548,11 @@
         if (holding) { c.fillStyle = 'rgba(100,210,255,0.35)'; c.fillRect(115, 110 + ((t * 250) % 300), 270, 6); hum += dt; if (hum > 0.5) { hum = 0; Sfx.hand(); } }
         txt(c, other ? 'Otro tripulante está en el otro escáner' : 'Se necesitan 2 personas a la vez', 250, 460, 15, '#ffd0d0');
       },
-      down(x, y) { if (inBox(x, y, 110, 100, 280, 320)) { holding = true; Sfx.hand(); hooks.send({ t: 'fix', kind: 'reactor', idx, val: true }); } },
+      down(x, y) {
+        if (!inBox(x, y, 110, 100, 280, 320)) return;
+        holding = true; Sfx.hand(); hooks.send({ t: 'fix', kind: 'reactor', idx, val: true });
+        if (hooks.test) setTimeout(() => { if (holding) { sab = { holds: [true, true] }; this.finish(); } }, 1500);
+      },
       up() { if (holding) { holding = false; hooks.send({ t: 'fix', kind: 'reactor', idx, val: false }); } },
     };
   };
@@ -583,7 +588,7 @@
           Sfx.beep(900 + i * 40);
           if (k === '✕') entry = '';
           else if (k === '✓') {
-            if (entry === sab.code) { hooks.send({ t: 'fix', kind: 'o2', idx, val: entry }); flash = 0.6; flashCol = '#30d158'; Sfx.success(); }
+            if (entry === sab.code) { hooks.send({ t: 'fix', kind: 'o2', idx, val: entry }); flash = 0.6; flashCol = '#30d158'; Sfx.success(); if (hooks.test) this.finish(); }
             else { flash = 0.5; flashCol = '#ff453a'; Sfx.wrong(); }
             entry = '';
           } else if (entry.length < 5) entry += k;

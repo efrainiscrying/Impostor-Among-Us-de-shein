@@ -150,7 +150,7 @@ function tick(room, dt, now) {
     if (!p.ai) initAI(p);
     try {
       if (room.phase === 'lobby') lobbyAI(room, p, dt, now);
-      else if (room.phase === 'play') playAI(room, p, dt, now);
+      else if (room.phase === 'play') { if (room.botsFrozen && room.devSolo()) { p.m = 0; continue; } playAI(room, p, dt, now); }
       else if (room.phase === 'meeting') meetingAI(room, p, now);
       else p.m = 0;
     } catch (e) { console.error('bot', e); }

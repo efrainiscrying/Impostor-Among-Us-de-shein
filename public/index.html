@@ -79,6 +79,7 @@
         <button class="pill-btn glass" id="mCustomBtn"><span data-icon="shirt"></span>Personalizar</button>
         <button class="pill-btn glass" id="mSettingsBtn"><span data-icon="gear"></span>Ajustes</button>
         <button class="pill-btn glass" id="mLogoutBtn"><span data-icon="exit"></span>Salir</button>
+        <button class="pill-btn glass dev-pill" id="mDevBtn"><span data-icon="code"></span><em id="mDevLabel">Modo developer</em></button>
       </div>
     </div>
   </div>
@@ -109,6 +110,7 @@
     <!-- arriba derecha -->
     <div class="hud-tr">
       <button class="hud-btn glass" id="btnChat" title="Chat (Enter)"><span data-icon="chat"></span><i class="badge" id="chatBadge"></i></button>
+      <button class="hud-btn glass dev-hud" id="btnDev" title="Panel developer (F2)"><span data-icon="code"></span></button>
       <button class="hud-btn glass" id="btnEmote" title="Emotes (1-8)"><span data-icon="smile"></span></button>
       <button class="hud-btn glass" id="btnMap" title="Mapa (Tab)"><span data-icon="map"></span></button>
       <button class="hud-btn glass" id="btnGear" title="Ajustes"><span data-icon="gear"></span></button>
@@ -134,9 +136,16 @@
     <div class="emote-wheel glass" id="emoteWheel"></div>
     <div class="countdown" id="countdown"><small>La partida empieza en</small><b id="cdNum">5</b></div>
     <div class="joystick" id="joystick"><div class="knob" id="knob"></div></div>
-    <div class="danger" id="danger"><div class="danger-dot"></div><span>PELIGRO</span></div>
+    <div class="danger-meter" id="danger"><div class="danger-dot"></div><span>PELIGRO</span></div>
+    <div class="dev-badge" id="devBadge">🛠️ DEV · SALA DE PRUEBAS</div>
     <div class="ghost-tip glass" id="ghostTip">Eres un fantasma 👻 Termina tus tareas para ayudar a tu equipo.</div>
   </div>
+
+  <!-- panel developer -->
+  <aside class="devpanel glass" id="devPanel">
+    <header><b>🛠️ Panel developer</b><button class="icon-btn" id="devClose"><span data-icon="x"></span></button></header>
+    <div class="dev-body" id="devBody"></div>
+  </aside>
 
   <!-- chat -->
   <aside class="chat glass" id="chat">
@@ -283,6 +292,23 @@
       <div class="bot-row" id="botRow"><span>Bots</span><button class="step" id="botMinus">−</button><b id="botCount">0</b><button class="step" id="botPlus">+</button></div>
       <label class="toggle-row" id="publicRow"><span>Sala pública</span><input type="checkbox" id="rulesPublic"><i class="switch"></i></label>
       <div class="player-list" id="playerList"></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="mDev">
+  <div class="sheet glass small">
+    <header><b>🛠️ Modo developer</b><button class="icon-btn" data-close><span data-icon="x"></span></button></header>
+    <div id="devLoginBox">
+      <p class="dev-hint">Introduce el código de acceso para activar las herramientas de prueba.</p>
+      <input class="code-input dev-code" id="devCode" maxlength="6" inputmode="numeric" autocomplete="off" placeholder="••••••">
+      <div class="form-error" id="devError"></div>
+      <button class="btn primary block" id="devGo">Entrar</button>
+    </div>
+    <div id="devOnBox">
+      <p class="dev-hint">✅ Modo developer <b>activo</b> en tu cuenta.<br>Los poderes solo funcionan en <b>salas de prueba</b> donde eres el único humano (con bots), así nunca afectan a tus amigos.</p>
+      <button class="btn primary block" id="devTestRoom">Crear sala de pruebas</button>
+      <button class="btn ghost block" id="devOff" style="margin-top:10px">Desactivar modo developer</button>
     </div>
   </div>
 </div>
