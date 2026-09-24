@@ -31,6 +31,8 @@
     crown: '<path d="M3 8l4 4 5-7 5 7 4-4-2 11H5z"/>',
     laptop: '<rect x="5" y="5" width="14" height="10" rx="1.5"/><path d="M2.5 19h19l-2-4h-15z"/>',
     megaphone: '<path d="M3 10v4h3l7 5V5L6 10z"/>',
+    smile: '<circle cx="12" cy="12" r="9"/><path d="M8 14.5c1 1.5 2.4 2.2 4 2.2s3-.7 4-2.2"/><path d="M9 9.5v.5M15 9.5v.5"/>',
+    camera: '<rect x="3" y="7" width="13" height="10" rx="2"/><path d="M16 11l5-3v8l-5-3z"/>',
     skull: '<path d="M5 11a7 7 0 1 1 14 0c0 2.5-1 4-2.5 5v3h-9v-3C6 15 5 13.5 5 11z"/><circle cx="9.5" cy="11" r="1.6"/><circle cx="14.5" cy="11" r="1.6"/>',
   };
   function svg(name) {

@@ -144,6 +144,10 @@
     noise(0.35, { freq: 500, slide: 120, vol: 0.35, delay: 0.08 });
     tone(60, 0.5, { type: 'sine', vol: 0.4, delay: 0.05, slide: 30 });
   };
+  S.shot = () => { noise(0.25, { freq: 2500, slide: 300, vol: 0.45 }); tone(90, 0.3, { type: 'square', vol: 0.25, slide: 40, filter: 800 }); noise(0.6, { freq: 400, vol: 0.15, delay: 0.1 }); };
+  S.emote = () => { tone(880, 0.08, { vol: 0.1, slide: 1320 }); tone(1320, 0.12, { vol: 0.07, delay: 0.06 }); };
+  S.confetti = () => { for (let i = 0; i < 8; i++) tone(1200 + Math.random() * 1600, 0.06, { vol: 0.04, delay: i * 0.03 }); noise(0.2, { freq: 5000, type: 'highpass', vol: 0.08 }); };
+  S.camStatic = () => noise(0.5, { freq: 3000, type: 'bandpass', vol: 0.12, q: 0.5 });
   S.stab = () => { noise(0.08, { freq: 7000, slide: 2500, type: 'highpass', vol: 0.25 }); tone(300, 0.1, { type: 'sawtooth', vol: 0.12, slide: 80, filter: 1500 }); };
   S.killReady = () => { tone(440, 0.1, { type: 'square', vol: 0.05, filter: 1000 }); tone(660, 0.14, { type: 'square', vol: 0.05, filter: 1000, delay: 0.08 }); };
   S.body = () => { tone(110, 1.2, { type: 'sawtooth', vol: 0.12, filter: 500 }); tone(116, 1.2, { type: 'sawtooth', vol: 0.12, filter: 500 }); };

@@ -109,6 +109,7 @@
     <!-- arriba derecha -->
     <div class="hud-tr">
       <button class="hud-btn glass" id="btnChat" title="Chat (Enter)"><span data-icon="chat"></span><i class="badge" id="chatBadge"></i></button>
+      <button class="hud-btn glass" id="btnEmote" title="Emotes (1-8)"><span data-icon="smile"></span></button>
       <button class="hud-btn glass" id="btnMap" title="Mapa (Tab)"><span data-icon="map"></span></button>
       <button class="hud-btn glass" id="btnGear" title="Ajustes"><span data-icon="gear"></span></button>
     </div>
@@ -124,12 +125,14 @@
     <!-- botones de acción -->
     <div class="actions" id="actions">
       <button class="act" id="actSabotage" data-key="G"><span data-icon="sabotage"></span><em>SABOTAJE</em></button>
-      <button class="act" id="actVent" data-key="V"><span data-icon="vent"></span><em>VENTILA</em></button>
+      <button class="act" id="actVent" data-key="V"><span data-icon="vent"></span><em>VENTILA</em><i class="cd" id="ventCd"></i></button>
       <button class="act" id="actKill" data-key="Q"><span data-icon="kill"></span><em>MATAR</em><i class="cd" id="killCd"></i></button>
       <button class="act" id="actReport" data-key="R"><span data-icon="report"></span><em>REPORTAR</em></button>
       <button class="act big" id="actUse" data-key="E"><span data-icon="use"></span><em id="useLabel">USAR</em></button>
     </div>
     <div class="vent-arrows" id="ventArrows"></div>
+    <div class="emote-wheel glass" id="emoteWheel"></div>
+    <div class="countdown" id="countdown"><small>La partida empieza en</small><b id="cdNum">5</b></div>
     <div class="joystick" id="joystick"><div class="knob" id="knob"></div></div>
     <div class="danger" id="danger"><div class="danger-dot"></div><span>PELIGRO</span></div>
     <div class="ghost-tip glass" id="ghostTip">Eres un fantasma 👻 Termina tus tareas para ayudar a tu equipo.</div>
@@ -147,6 +150,14 @@
     <div class="map-card glass">
       <header><b id="mapTitle">Mapa de la nave</b><button class="icon-btn" id="mapClose"><span data-icon="x"></span></button></header>
       <div class="map-wrap" id="mapWrap"><canvas id="mapCanvas"></canvas><div id="sabButtons"></div></div>
+    </div>
+  </div>
+
+  <!-- cámaras -->
+  <div class="overlay" id="camOverlay">
+    <div class="cam-card glass">
+      <header><b>Cámaras de seguridad</b><button class="icon-btn" id="camClose"><span data-icon="x"></span></button></header>
+      <div class="cam-grid" id="camGrid"></div>
     </div>
   </div>
 
@@ -238,6 +249,8 @@
         <div class="color-grid" id="colorGrid"></div>
         <div class="sub-head">Sombrero</div>
         <div class="hat-grid" id="hatGrid"></div>
+        <div class="sub-head">Mascota</div>
+        <div class="hat-grid" id="petGrid"></div>
       </div>
     </div>
   </div>
@@ -283,6 +296,7 @@
 <script src="js/draw.js"></script>
 <script src="js/world.js"></script>
 <script src="js/tasks.js"></script>
+<script src="js/fx.js"></script>
 <script src="js/icons.js"></script>
 <script src="js/app.js"></script>
 </body>

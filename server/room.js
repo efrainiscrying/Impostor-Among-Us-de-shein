@@ -83,7 +83,7 @@ class Room {
     if (this.active().length >= this.settings.maxPlayers) return { error: 'La sala está llena.' };
     const p = this.newMember({
       id: user.id, userId: user.id, name: user.username, bot: false,
-      color: this.freeColor(user.color), hat: user.hat || 'none', ws,
+      color: this.freeColor(user.color), hat: user.hat || 'none', pet: user.pet || 'none', ws,
     });
     this.sendJoined(p);
     this.broadcastRoom();
@@ -145,7 +145,7 @@ class Room {
 
   // ---------------------------------------------------------------- envíos
   publicPlayers() {
-    return this.active().map(p => ({ id: p.id, name: p.name, color: p.color, hat: p.hat, bot: p.bot, host: p.id === this.hostId, connected: p.connected }));
+    return this.active().map(p => ({ id: p.id, name: p.name, color: p.color, hat: p.hat, pet: p.pet || 'none', bot: p.bot, host: p.id === this.hostId, connected: p.connected }));
   }
 
   roomInfo() {
@@ -169,6 +169,7 @@ class Room {
     switch (msg.t) {
       case 'settings':
         if (!isHost || this.phase !== 'lobby') return;
+        this.cancelCountdown();
         this.settings = S.sanitizeSettings(msg.settings, this.settings);
         if (typeof msg.isPublic === 'boolean') this.isPublic = msg.isPublic;
         this.broadcastRoom();
@@ -179,7 +180,8 @@ class Room {
         const used = new Set(this.active().map(q => q.name));
         const name = BOT_NAMES.find(n => !used.has(n)) || ('Bot' + (++this.botCounter));
         const hats = S.HATS.map(h => h.id);
-        this.newMember({ id: 'bot_' + Date.now().toString(36) + (++this.botCounter), name, bot: true, color: this.freeColor(), hat: hats[Math.floor(Math.random() * hats.length)] });
+        const pets = S.PETS.map(h => h.id);
+        this.newMember({ id: 'bot_' + Date.now().toString(36) + (++this.botCounter), name, bot: true, color: this.freeColor(), hat: hats[Math.floor(Math.random() * hats.length)], pet: Math.random() < 0.5 ? pets[Math.floor(Math.random() * pets.length)] : 'none' });
         this.broadcastRoom();
         return;
       }
@@ -205,13 +207,37 @@ class Room {
           else p.color = msg.color;
         }
         if (msg.hat && S.HATS.some(h => h.id === msg.hat)) p.hat = msg.hat;
+        if (msg.pet && S.PETS.some(h => h.id === msg.pet)) p.pet = msg.pet;
         this.broadcastRoom();
         return;
       }
-      case 'start':
+      case 'start': {
         if (!isHost || this.phase !== 'lobby') return;
-        this.startGame(p);
+        if (this.countdownEnd) return this.cancelCountdown(true);
+        const mode = S.MODES[this.settings.mode];
+        if (this.active().length < mode.min) return send(p, { t: 'toast', text: `El modo ${mode.name} necesita al menos ${mode.min} jugadores. ¡Agrega bots!` });
+        this.countdownEnd = Date.now() + 5000;
+        this.countdownHost = p;
+        this.broadcast({ t: 'countdown', in: 5000 });
+        return;
+      }
     }
+  }
+
+  cancelCountdown(announce) {
+    if (!this.countdownEnd) return;
+    this.countdownEnd = 0;
+    this.broadcast({ t: 'countdown', in: 0 });
+    if (announce) this.systemChat('El anfitrión canceló el inicio.');
+  }
+
+  onEmote(p, e) {
+    const now = Date.now();
+    e = Number(e) | 0;
+    if (e < 0 || e >= S.EMOTES.length || now - (p.lastEmote || 0) < 1000 || this.phase === 'meeting') return;
+    p.lastEmote = now;
+    const ghost = this.phase !== 'lobby' && !p.alive;
+    this.broadcast({ t: 'emote', id: p.id, e }, q => !ghost || !q.alive);
   }
 
   // ---------------------------------------------------------------- inicio
@@ -256,11 +282,18 @@ class Room {
       if (s.mode === 'classic') p.role = impostors.has(p.id) ? 'impostor' : 'crew';
       else if (s.mode === 'hideseek') p.role = impostors.has(p.id) ? 'seeker' : 'hider';
       else p.role = 'racer';
+      p.sub = null; p.ventReadyAt = 0; p.ventSince = 0;
       if (s.mode === 'race') p.tasks = raceTasks.map(t => this.instTask(t));
       else p.tasks = this.pickTasks(common).map(t => this.instTask(t));
       p.fake = p.role === 'impostor' || p.role === 'seeker';
       p.killReadyAt = this.introEnd + (s.mode === 'hideseek' ? 10000 : 10000);
     });
+    if (s.mode === 'classic') {
+      const crew = shuffle(all.filter(p => p.role === 'crew'));
+      let k = 0;
+      for (let i = 0; i < s.sheriffs && k < crew.length - 1; i++) { crew[k].sub = 'sheriff'; crew[k].killReadyAt = this.introEnd + s.killCooldown * 1000; k++; }
+      for (let i = 0; i < s.engineers && k < crew.length; i++) crew[k++].sub = 'engineer';
+    }
     this.emergencyReadyAt = this.introEnd + s.emergencyCooldown * 1000;
     if (s.mode === 'hideseek') {
       this.seekerReleaseAt = this.introEnd + 10000;
@@ -300,7 +333,7 @@ class Room {
     if (p.role === 'impostor') mates = this.active().filter(q => q.role === 'impostor').map(q => q.id);
     const seeker = s.mode === 'hideseek' ? (this.active().find(q => q.role === 'seeker') || {}).id : null;
     send(p, {
-      t: 'start', intro, mode: s.mode, settings: s, you: p.id, role: p.role, mates, seeker,
+      t: 'start', intro, mode: s.mode, settings: s, you: p.id, role: p.role, sub: p.sub || null, mates, seeker,
       alive: p.alive, tasks: p.tasks, fake: !!p.fake,
       players: this.publicPlayers().map(q => Object.assign(q, { alive: this.players.get(q.id).alive })),
       phase: this.phase,
@@ -325,9 +358,11 @@ class Room {
     if (!p || p.left) return;
     if (msg.t === 'chat') return this.onChat(p, msg);
     if (msg.t === 'move') return this.onMove(p, msg);
+    if (msg.t === 'emote') return this.onEmote(p, msg.e);
     if (this.phase === 'lobby') return this.handleLobby(p, msg);
     switch (msg.t) {
       case 'kill': return this.onKill(p, this.players.get(msg.id));
+      case 'emote': return this.onEmote(p, msg.e);
       case 'report': return this.onReport(p, msg.id);
       case 'emergency': return this.onEmergency(p);
       case 'task': return this.onTask(p, msg.id, msg.step);
@@ -386,12 +421,21 @@ class Room {
     const s = this.settings;
     const now = Date.now();
     if (this.phase !== 'play' || !p.alive || p.inVent || !target || !target.alive || target.left) return;
+    const sheriff = p.role === 'crew' && p.sub === 'sheriff';
     if (p.role === 'impostor') { if (target.role === 'impostor') return; }
     else if (p.role === 'seeker') { if (now < this.seekerReleaseAt) return; }
-    else return;
+    else if (!sheriff) return;
     if (now < p.killReadyAt - 300) return;
     const range = S.KILL_DISTANCES[s.killDistance] + 40;
     if (Math.hypot(p.x - target.x, p.y - target.y) > range) return;
+    if (sheriff && target.role !== 'impostor') {
+      // disparo fallido: el sheriff muere
+      p.alive = false; p.scanning = false;
+      this.bodies.push({ id: p.id, color: p.color, x: p.x, y: p.y, at: now });
+      send(p, { t: 'killed', by: { color: p.color, hat: p.hat, name: p.name }, mode: s.mode, misfire: true });
+      this.broadcast({ t: 'killfx', x: p.x, y: p.y, victim: p.id, shot: true });
+      return this.checkWin();
+    }
 
     target.alive = false;
     target.scanning = false;
@@ -400,10 +444,11 @@ class Room {
     p.x = target.x; p.y = target.y;
     const cd = (s.mode === 'hideseek' ? s.seekerCooldown : s.killCooldown) * 1000;
     p.killReadyAt = now + cd;
+    if (sheriff) { p.x = target.x - 60 * (p.x < target.x ? 1 : -1); p.y = target.y; if (!S.canStand(this.map, p.x, p.y, this.closedDoors)) { p.x = target.x; } }
     send(p, { t: 'pos', x: p.x, y: p.y });
     send(p, { t: 'cd', killIn: cd });
     send(target, { t: 'killed', by: { color: p.color, hat: p.hat, name: p.name }, mode: s.mode });
-    this.broadcast({ t: 'killfx', x: target.x, y: target.y, victim: target.id });
+    this.broadcast({ t: 'killfx', x: target.x, y: target.y, victim: target.id, shot: sheriff });
     if (!p.bot) auth.addStats(p.userId, { kills: 1 });
     bots.onKill(this, p, target);
     this.checkWin();
@@ -453,13 +498,15 @@ class Room {
   }
 
   onVent(p, msg) {
-    if (this.phase !== 'play' || !p.alive || p.role !== 'impostor') return;
+    const eng = p.role === 'crew' && p.sub === 'engineer';
+    if (this.phase !== 'play' || !p.alive || (p.role !== 'impostor' && !eng)) return;
     const vents = S.SHIP.vents;
+    if (eng && msg.a === 'enter' && Date.now() < p.ventReadyAt) return send(p, { t: 'toast', text: `Ventila disponible en ${Math.ceil((p.ventReadyAt - Date.now()) / 1000)} s` });
     if (msg.a === 'enter' && !p.inVent) {
       const v = vents.find(v => Math.hypot(p.x - v.x, p.y - v.y) <= S.VENT_RANGE + 40);
       if (!v) return;
-      p.inVent = v.id; p.x = v.x; p.y = v.y; p.scanning = false;
-      send(p, { t: 'vent', id: v.id });
+      p.inVent = v.id; p.x = v.x; p.y = v.y; p.scanning = false; p.ventSince = Date.now();
+      send(p, { t: 'vent', id: v.id, max: eng ? S.ENGINEER_VENT_TIME * 1000 : 0 });
       this.broadcast({ t: 'ventfx', id: v.id }, q => q !== p);
     } else if (msg.a === 'move' && p.inVent) {
       const cur = vents.find(v => v.id === p.inVent);
@@ -470,7 +517,8 @@ class Room {
     } else if (msg.a === 'exit' && p.inVent) {
       const v = vents.find(v => v.id === p.inVent);
       p.inVent = null;
-      send(p, { t: 'vent', id: null });
+      if (eng) p.ventReadyAt = Date.now() + S.ENGINEER_VENT_COOLDOWN * 1000;
+      send(p, { t: 'vent', id: null, cd: eng ? S.ENGINEER_VENT_COOLDOWN * 1000 : 0 });
       this.broadcast({ t: 'ventfx', id: v.id }, q => q !== p);
     }
   }
@@ -673,6 +721,15 @@ class Room {
     }
     if (this.destroyed) return;
 
+    if (this.countdownEnd && now >= this.countdownEnd) {
+      this.countdownEnd = 0;
+      if (this.phase === 'lobby') this.startGame(this.players.get(this.hostId) || this.countdownHost);
+    }
+    if (this.phase === 'play') {
+      for (const p of this.players.values()) {
+        if (p.inVent && p.sub === 'engineer' && now - p.ventSince > S.ENGINEER_VENT_TIME * 1000) this.onVent(p, { a: 'exit' });
+      }
+    }
     if (this.phase === 'intro' && now >= this.introEnd) {
       this.phase = 'play';
       this.broadcast({ t: 'phase', phase: 'play' });
@@ -824,7 +881,7 @@ class Room {
         .sort((a, b) => b.done - a.done)
       : null;
     const winIds = winners.map(p => p.id);
-    const info = all.map(p => ({ id: p.id, name: p.name, color: p.color, hat: p.hat, role: p.role, alive: p.alive }));
+    const info = all.map(p => ({ id: p.id, name: p.name, color: p.color, hat: p.hat, pet: p.pet, role: p.role, sub: p.sub || null, alive: p.alive }));
     this.broadcast({ t: 'gameover', winner, reason, winners: winIds, players: info, ranking, mode: this.settings.mode });
     for (const p of all) {
       if (p.bot || p.left) continue;

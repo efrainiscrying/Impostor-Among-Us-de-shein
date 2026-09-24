@@ -159,6 +159,7 @@ function tick(room, dt, now) {
 
 function lobbyAI(room, p, dt, now) {
   const ai = p.ai;
+  if (Math.random() < dt * 0.06) room.onEmote(p, Math.floor(Math.random() * S.EMOTES.length));
   if (walk(room, p, dt) && now > ai.wait) {
     ai.wait = now + rnd(1500, 6000);
     const c = S.LOBBY.spawnCenter;

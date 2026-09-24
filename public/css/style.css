@@ -207,7 +207,7 @@ body:not(.touch) .danger { bottom: calc(24px + var(--safe-b)); }
 /* ---------------- chat ---------------- */
 .chat { position: absolute; top: calc(70px + var(--safe-t)); right: calc(12px + var(--safe-r)); bottom: calc(16px + var(--safe-b)); width: min(380px, calc(100vw - 24px)); border-radius: 24px; display: flex; flex-direction: column; transform: translateX(calc(100% + 30px)); transition: transform .5s var(--spring); z-index: 55; background: var(--glass-strong); }
 .chat.show { transform: none; }
-.chat header, .sheet header, .map-card header, .task-card header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--stroke); }
+.chat header, .sheet header, .map-card header, .cam-card header, .task-card header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--stroke); }
 .chat-log { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 10px; user-select: text; -webkit-user-select: text; }
 .msg { display: flex; gap: 8px; align-items: flex-end; animation: msgIn .4s var(--spring); }
 @keyframes msgIn { from { opacity: 0; transform: translateY(10px) scale(.96); } to { opacity: 1; transform: none; } }
@@ -475,3 +475,30 @@ input[type=range]::-moz-range-thumb { width: 26px; height: 26px; border-radius: 
   .meeting.chat-open { justify-content: flex-start; padding-left: 24px; }
   .meeting.chat-open .tablet { width: min(calc(100vw - 440px), 900px); }
 }
+
+/* ---------------- emotes, cuenta regresiva, cámaras, confeti ---------------- */
+.emote-wheel { position: absolute; top: calc(70px + var(--safe-t)); right: calc(12px + var(--safe-r)); display: grid; grid-template-columns: repeat(4, 52px); gap: 6px; padding: 8px; border-radius: 20px; opacity: 0; transform: translateY(-10px) scale(.9); pointer-events: none; transition: opacity .25s, transform .4s var(--spring); z-index: 25; }
+.emote-wheel.show { opacity: 1; transform: none; pointer-events: auto; }
+.emote-wheel button { width: 52px; height: 52px; border-radius: 14px; font-size: 28px; background: rgba(255,255,255,.08); transition: transform .3s var(--spring), background .2s; position: relative; }
+.emote-wheel button:hover { background: rgba(255,255,255,.18); transform: scale(1.12); }
+.emote-wheel button small { position: absolute; bottom: 2px; right: 5px; font-size: 9px; opacity: .5; font-weight: 800; }
+.countdown { position: absolute; left: 50%; top: 40%; transform: translate(-50%, -50%); display: none; flex-direction: column; align-items: center; pointer-events: none; text-shadow: 0 6px 30px rgba(0,0,0,.8); }
+.countdown.show { display: flex; }
+.countdown small { font-weight: 800; letter-spacing: 2px; text-transform: uppercase; font-size: 14px; opacity: .85; }
+.countdown b { font-family: "Lilita One", Inter, sans-serif; font-weight: 900; font-size: 140px; line-height: 1; color: #fff; -webkit-text-stroke: 4px #0b0d12; }
+.countdown b.pop { animation: cdpop .8s var(--spring); }
+@keyframes cdpop { from { transform: scale(2.2); opacity: 0; } 40% { opacity: 1; } to { transform: scale(1); } }
+.cam-card { width: min(96vw, 1000px); border-radius: 26px; overflow: hidden; background: #0b0e14; }
+.cam-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 10px; }
+.cam { position: relative; border-radius: 12px; overflow: hidden; border: 2px solid #283040; background: #000; }
+.cam canvas { width: 100%; display: block; aspect-ratio: 16 / 10; }
+.cam span { position: absolute; left: 10px; bottom: 8px; font-size: 12px; font-weight: 800; letter-spacing: 1px; text-shadow: 0 1px 3px #000; }
+.cam i { position: absolute; right: 10px; top: 8px; font-style: normal; font-size: 12px; font-weight: 900; color: #ff453a; animation: blink 1s infinite; }
+.confetti { position: absolute; top: -20px; width: 10px; height: 16px; border-radius: 2px; pointer-events: none; animation: fall linear forwards; z-index: 1; }
+@keyframes fall { to { transform: translateY(110vh) rotate(720deg); } }
+.tp-fill.pulse-bar { animation: barpulse .9s var(--ease); }
+@keyframes barpulse { 0% { filter: brightness(1); } 30% { filter: brightness(2.2); box-shadow: 0 0 24px #30d158; } 100% { filter: brightness(1); } }
+.role-title.sheriff { color: #ffd60a; text-shadow: 0 0 40px rgba(255,214,10,.6), 0 5px 0 #4a3a00; }
+.role-title.eng { color: #ff9f0a; text-shadow: 0 0 40px rgba(255,159,10,.6), 0 5px 0 #4a2a00; }
+.go-sub { display: block; font-size: 11px; opacity: .8; margin-top: 2px; }
+@media (max-width: 600px) { .cam-grid { grid-template-columns: 1fr; } .countdown b { font-size: 100px; } }

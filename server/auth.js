@@ -40,7 +40,7 @@ function hashPassword(password, salt) {
 
 function publicUser(u) {
   return {
-    id: u.id, username: u.username, color: u.color, hat: u.hat,
+    id: u.id, username: u.username, color: u.color, hat: u.hat, pet: u.pet || 'none',
     stats: u.stats,
   };
 }
@@ -104,6 +104,7 @@ function logout(token) {
 function updateProfile(u, data) {
   if (data.color && Shared.COLORS.some(c => c.id === data.color)) u.color = data.color;
   if (data.hat && Shared.HATS.some(h => h.id === data.hat)) u.hat = data.hat;
+  if (data.pet && Shared.PETS.some(h => h.id === data.pet)) u.pet = data.pet;
   save();
 }
 

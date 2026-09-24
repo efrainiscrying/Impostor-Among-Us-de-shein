@@ -120,7 +120,7 @@ wss.on('connection', (ws) => {
       case 'profile':
         auth.updateProfile(user, msg);
         reply({ t: 'profile', user: auth.publicUser(user) });
-        if (room && player && room.phase === 'lobby') room.handle(player, { t: 'look', color: msg.color, hat: msg.hat });
+        if (room && player && room.phase === 'lobby') room.handle(player, { t: 'look', color: msg.color, hat: msg.hat, pet: msg.pet });
         return;
       case 'rooms': return reply({ t: 'rooms', list: listPublic() });
       case 'create': {

@@ -19,6 +19,7 @@
     keys: {}, joy: { x: 0, y: 0 }, screen: 'scrSplash',
     chatOpen: false, unread: 0, pendingJoin: null, pendingBots: 0,
     lastSend: 0, lastSent: null, interact: {}, fx: null,
+    pets: new Map(), emotes: new Map(), countdownEnd: 0,
   };
   window.App = App;
   App._handle = m => handle(m);
@@ -242,7 +243,9 @@
     g.addColorStop(0, 'rgba(100,160,255,0.25)'); g.addColorStop(1, 'rgba(0,0,0,0)');
     heroC.fillStyle = g; heroC.fillRect(0, 0, 360, 360);
     const walking = Math.sin(t * 0.6) > 0.3;
-    Draw.bean(heroC, 180, 300 + Math.sin(t * 2) * 3, { color: u.color, hat: u.hat, scale: 3, moving: walking, walk: t * 9, flip: Math.sin(t * 0.3) > 0.8, time: t });
+    const hf = Math.sin(t * 0.3) > 0.8;
+    Draw.bean(heroC, 170, 300 + Math.sin(t * 2) * 3, { color: u.color, hat: u.hat, scale: 3, moving: walking, walk: t * 9, flip: hf, time: t });
+    Draw.pet(heroC, hf ? 290 : 60, 305, u.pet, { color: u.color, scale: 2, moving: walking, flip: hf, time: t });
   }
 
   // ================================================================ personalizar
@@ -251,8 +254,8 @@
     openModal('mCustom');
   }
   function myLook() {
-    if (App.room && App.you) { const m = App.meta.get(App.you); if (m) return { color: m.color, hat: m.hat }; }
-    return { color: App.user.color, hat: App.user.hat };
+    if (App.room && App.you) { const m = App.meta.get(App.you); if (m) return { color: m.color, hat: m.hat, pet: m.pet || 'none' }; }
+    return { color: App.user.color, hat: App.user.hat, pet: App.user.pet || 'none' };
   }
   function renderCustomize() {
     const look = myLook();
@@ -262,6 +265,8 @@
     $('#hatGrid').innerHTML = S.HATS.map(h => `<button class="hat ${h.id === look.hat ? 'sel' : ''}" title="${h.name}" data-h="${h.id}"><img src="${beanImg(look.color, h.id, 80, { noShadow: true })}" alt="${h.name}"></button>`).join('');
     $$('#colorGrid .swatch').forEach(b => b.addEventListener('click', () => setLook({ color: b.dataset.c })));
     $$('#hatGrid .hat').forEach(b => b.addEventListener('click', () => setLook({ hat: b.dataset.h })));
+    $('#petGrid').innerHTML = S.PETS.map(h => `<button class="hat ${h.id === look.pet ? 'sel' : ''}" title="${h.name}" data-p="${h.id}"><img src="${Draw.petImage(h.id, look.color, 64)}" alt="${h.name}"></button>`).join('');
+    $$('#petGrid .hat').forEach(b => b.addEventListener('click', () => setLook({ pet: b.dataset.p })));
   }
   function setLook(ch) {
     if (App.room && App.G) return toast('No puedes cambiar tu aspecto durante la partida.', true);
@@ -274,7 +279,8 @@
     const look = myLook();
     custC.setTransform(1, 0, 0, 1, 0, 0);
     custC.clearRect(0, 0, 260, 260);
-    Draw.bean(custC, 130, 225 + Math.sin(t * 2) * 3, { color: look.color, hat: look.hat, scale: 2.4, moving: true, walk: t * 8, time: t });
+    Draw.bean(custC, 115, 225 + Math.sin(t * 2) * 3, { color: look.color, hat: look.hat, scale: 2.2, moving: true, walk: t * 8, time: t });
+    Draw.pet(custC, 210, 232, look.pet, { color: look.color, scale: 1.6, moving: true, time: t });
   }
 
   // ================================================================ ajustes
@@ -349,6 +355,8 @@
       case 'final': if (G) { G.finalHide = true; G.hsEndAt = now() + m.endIn; Sfx.finalHide(); toast('¡ESCONDITE FINAL! El buscador es más rápido 😱'); } break;
       case 'ping': if (G) G.pings = { pts: m.pts, t: now() }; break;
       case 'gameover': onGameOver(m); break;
+      case 'emote': App.emotes.set(m.id, { e: m.e, t: now() }); Sfx.emote(); break;
+      case 'countdown': onCountdown(m); break;
     }
   }
 
@@ -446,9 +454,33 @@
     st.style.display = host ? '' : 'none';
     const min = S.MODES[r.settings.mode].min;
     st.classList.toggle('dim', n < min);
-    st.textContent = n < min ? `Faltan ${min - n}` : 'Empezar';
+    st.textContent = App.countdownEnd ? 'Cancelar' : n < min ? `Faltan ${min - n}` : 'Empezar';
   }
+  let cdTimer = null;
+  function onCountdown(m) {
+    clearInterval(cdTimer);
+    const el = $('#countdown');
+    if (!m.in) { App.countdownEnd = 0; el.classList.remove('show'); updateLobbyHud(); return; }
+    App.countdownEnd = now() + m.in;
+    el.classList.add('show');
+    let last = -1;
+    const tickCd = () => {
+      const left = Math.ceil((App.countdownEnd - now()) / 1000);
+      if (left <= 0 || !App.countdownEnd) { clearInterval(cdTimer); el.classList.remove('show'); return; }
+      if (left !== last) {
+        last = left;
+        const b = $('#cdNum');
+        b.textContent = left; b.classList.remove('pop'); void b.offsetWidth; b.classList.add('pop');
+        Sfx.countdown(left === 1);
+      }
+    };
+    tickCd();
+    cdTimer = setInterval(tickCd, 100);
+    updateLobbyHud();
+  }
+
   $('#lbStart').addEventListener('click', () => {
+    if (App.countdownEnd) return send({ t: 'start' });
     const r = App.room;
     const min = S.MODES[r.settings.mode].min;
     if (r.players.length < min) { toast(`Se necesitan ${min} jugadores. Invita amigos o agrega bots en «Reglas».`, true); Sfx.error(); return; }
@@ -531,7 +563,7 @@
     syncMeta(m.players);
     const G = App.G = {
       mode: m.mode, settings: m.settings, role: m.role, mates: new Set(m.mates || []), seeker: m.seeker,
-      tasks: m.tasks || [], fake: m.fake, alive: m.alive, phase: m.phase,
+      tasks: m.tasks || [], fake: m.fake, alive: m.alive, phase: m.phase, sub: m.sub || null, ventEnd: 0, ventReadyAt: 0,
       killReadyAt: t + (m.killIn || 0), emergencies: m.emergencies,
       emergencyReadyAt: t + (m.introIn || 0) + m.settings.emergencyCooldown * 1000,
       hsEndAt: t + (m.hsEndIn || 0), seekerReleaseAt: t + (m.seekerIn || 0), finalHide: m.finalHide,
@@ -542,6 +574,7 @@
     App.me.x = m.x; App.me.y = m.y; App.me.init = true; App.me.m = 0;
     App.cam.x = m.x; App.cam.y = m.y;
     App.bodies = []; App.closedDoors = []; App.ventFx = [];
+    App.countdownEnd = 0; $('#countdown').classList.remove('show'); App.pets.clear();
     for (const p of App.players.values()) p.hidden = true;
     App.chatLog = [];
     $('#chatLog').innerHTML = '';
@@ -573,9 +606,11 @@
       sub.innerHTML = n > 1 ? `Tus compañeros impostores están contigo. <b>Elimina a la tripulación.</b>` : '<b>Elimina a la tripulación</b> sin que te descubran.';
       lineupIds = [...G.mates];
     } else if (G.role === 'crew') {
-      title.textContent = 'Tripulante'; title.className = 'role-title crew';
       const n = Math.min(G.settings.impostors, Math.max(1, Math.floor((all.length - 1) / 2)));
-      sub.innerHTML = `Hay <b>${n} impostor${n > 1 ? 'es' : ''}</b> entre nosotros.`;
+      const nTxt = `Hay <b>${n} impostor${n > 1 ? 'es' : ''}</b> entre nosotros.`;
+      if (G.sub === 'sheriff') { title.textContent = 'Sheriff'; title.className = 'role-title sheriff'; sub.innerHTML = `${nTxt}<br>Dispara al impostor… <b>si fallas, mueres tú.</b>`; }
+      else if (G.sub === 'engineer') { title.textContent = 'Ingeniero'; title.className = 'role-title eng'; sub.innerHTML = `${nTxt}<br>Puedes esconderte en las <b>ventilas</b> unos segundos.`; }
+      else { title.textContent = 'Tripulante'; title.className = 'role-title crew'; sub.innerHTML = nTxt; }
       lineupIds = all;
     } else if (G.role === 'seeker') {
       title.textContent = 'Buscador'; title.className = 'role-title seek';
@@ -648,8 +683,9 @@
     const imp = G && G.role === 'impostor';
     show('#actUse', true);
     show('#actReport', G && G.mode === 'classic');
-    show('#actKill', G && (G.role === 'impostor' || G.role === 'seeker'));
-    show('#actVent', imp);
+    show('#actKill', G && (G.role === 'impostor' || G.role === 'seeker' || G.sub === 'sheriff'));
+    show('#actVent', imp || (G && G.sub === 'engineer'));
+    $('#actKill').querySelector('em').textContent = G && G.sub === 'sheriff' ? 'DISPARAR' : 'MATAR';
     show('#actSabotage', imp);
     updateChatButton();
     updateTaskPanel(true);
@@ -691,7 +727,7 @@
     else if (G.role === 'seeker') head.textContent = 'Atrapa a todos los escondidos.';
     else if (G.role === 'hider') head.textContent = G.alive ? 'Sobrevive y haz tareas (restan tiempo).' : 'Fantasma: sigue haciendo tareas.';
     else if (G.role === 'racer') head.textContent = '¡Completa todo antes que nadie!';
-    else head.textContent = G.alive ? 'Tareas' : 'Eres un fantasma: termina tus tareas.';
+    else head.textContent = !G.alive ? 'Eres un fantasma: termina tus tareas.' : G.sub === 'sheriff' ? 'Tareas · eres el Sheriff 🔫' : G.sub === 'engineer' ? 'Tareas · eres Ingeniero 🔧' : 'Tareas';
     head.className = 'tp-head' + (isImp() ? ' imp' : '');
     const near = App.interact.use && App.interact.use.kind === 'task' ? App.interact.use.task.id : null;
     for (const tk of G.tasks) {
@@ -713,7 +749,11 @@
     const tk = App.G.tasks.find(t => t.id === m.id);
     if (!tk) return;
     tk.step = m.step; tk.done = m.done;
-    if (m.done) toast(`✓ ${tk.name}`);
+    if (m.done) {
+      toast(`✓ ${tk.name}`);
+      Fx.confetti(App.me.x, App.me.y - 60, 46); Fx.text(App.me.x, App.me.y - 70, '¡Tarea lista!'); Sfx.confetti();
+      const f = $('#tpFill'); f.classList.remove('pulse-bar'); void f.offsetWidth; f.classList.add('pulse-bar');
+    } else Fx.text(App.me.x, App.me.y - 70, `${tk.step}/${tk.steps.length}`, '#ffd60a');
     updateTaskPanel(true);
   }
 
@@ -722,6 +762,8 @@
     const u = App.interact.use;
     if (!u) return;
     if (u.kind === 'laptop') return openCustomize();
+    if (u.kind === 'admin') return openMap('admin');
+    if (u.kind === 'cams') return openCams();
     if (!G) return;
     const me = App.meta.get(App.you);
     if (u.kind === 'task') {
@@ -772,6 +814,11 @@
         res.highlights.push({ x: st.x, y: st.y, wall: World.wallTopFor(map, st.x, st.y), strong: d <= S.INTERACT_RANGE, color: '#ff453a' });
       });
     }
+    if (!G.inVent) {
+      const a = S.ADMIN_TABLE, sd = S.SECURITY_DESK;
+      consider({ kind: 'admin' }, a.x, a.y, 150);
+      consider({ kind: 'cams' }, sd.x, sd.y, 130);
+    }
     if (G.alive && G.mode === 'classic' && !G.inVent) {
       const b = S.SHIP.button;
       const d = consider({ kind: 'button' }, b.x, b.y, S.BUTTON_RANGE);
@@ -784,7 +831,7 @@
         if (d < S.REPORT_RANGE && d < bd && Shared.lineOfSight(map, built().vgrid, me.x, me.y - 20, b.x, b.y - 20, App.closedDoors)) { bd = d; res.report = b; }
       }
     }
-    const hunter = G.alive && !G.inVent && (G.role === 'impostor' || (G.role === 'seeker' && now() >= G.seekerReleaseAt));
+    const hunter = G.alive && !G.inVent && (G.role === 'impostor' || G.sub === 'sheriff' || (G.role === 'seeker' && now() >= G.seekerReleaseAt));
     if (hunter) {
       const range = S.KILL_DISTANCES[G.settings.killDistance];
       let bd = Infinity;
@@ -794,7 +841,7 @@
         if (d <= range && d < bd && isVisible(p)) { bd = d; res.kill = p; }
       }
     }
-    if (G.alive && G.role === 'impostor') {
+    if (G.alive && (G.role === 'impostor' || G.sub === 'engineer')) {
       if (G.inVent) res.vent = { exit: true };
       else for (const v of map.vents) if (Math.hypot(me.x - v.x, me.y - v.y) <= S.VENT_RANGE) res.vent = v;
     }
@@ -811,6 +858,8 @@
     if (i.use && i.use.kind === 'laptop') label = 'PERSONALIZAR';
     else if (i.use && i.use.kind === 'button') label = 'EMERGENCIA';
     else if (i.use && i.use.kind === 'sab') label = 'REPARAR';
+    else if (i.use && i.use.kind === 'admin') label = 'ADMIN';
+    else if (i.use && i.use.kind === 'cams') label = 'CÁMARAS';
     if ($('#useLabel').textContent !== label) $('#useLabel').textContent = label;
     set('#actReport', i.report);
     const t = now();
@@ -824,7 +873,11 @@
       set('#actKill', i.kill && shown <= 0);
       if (G.wasCd && shown <= 0 && G.phase === 'play' && G.alive) Sfx.killReady();
       G.wasCd = shown > 0;
-      set('#actVent', i.vent);
+      const vc = $('#ventCd');
+      const ventLeft = G.inVent && G.ventEnd ? (G.ventEnd - t) / 1000 : (!G.inVent && G.ventReadyAt > t ? (G.ventReadyAt - t) / 1000 : 0);
+      vc.classList.toggle('show', ventLeft > 0);
+      vc.textContent = Math.ceil(ventLeft);
+      set('#actVent', i.vent && (G.inVent || G.ventReadyAt <= t));
       $('#actVent').querySelector('em').textContent = G.inVent ? 'SALIR' : 'VENTILA';
       set('#actSabotage', G.role === 'impostor' && G.phase === 'play' && !G.inVent);
     }
@@ -858,8 +911,9 @@
     G.alive = false;
     const me = App.meta.get(App.you);
     if (me) me.alive = false;
-    Tasks.close(true); closeMap();
-    playKillAnim(m.by, me);
+    Tasks.close(true); closeMap(); closeCams();
+    if (m.misfire) { Sfx.shot(); App.shake = 14; Fx.blood(App.me.x, App.me.y); toast('💀 ¡Le disparaste a un inocente! El Sheriff cae.', true); }
+    else playKillAnim(m.by, me);
     updateChatButton();
     setTimeout(() => { $('#ghostTip').classList.add('show'); setTimeout(() => $('#ghostTip').classList.remove('show'), 6000); }, 2600);
     updateTaskPanel(true);
@@ -870,7 +924,7 @@
     const d = Math.hypot(App.me.x - m.x, App.me.y - m.y);
     const vis = !G.alive || d < visionRadius() && Shared.lineOfSight(S.SHIP, built().vgrid, App.me.x, App.me.y - 20, m.x, m.y - 20, App.closedDoors);
     if (m.victim === App.you) return;
-    if (vis || d < 200) { Sfx.kill(); if (d < 300) App.shake = 10; }
+    if (vis || d < 200) { if (m.shot) Sfx.shot(); else Sfx.kill(); Fx.blood(m.x, m.y); if (d < 300) App.shake = 10; }
     const p = App.meta.get(m.victim);
     if (p) p.alive = false;
     const pl = App.players.get(m.victim);
@@ -881,13 +935,16 @@
     const G = App.G;
     const was = G.inVent;
     G.inVent = m.id;
+    if (m.max) G.ventEnd = now() + m.max;
+    if (!m.id) { G.ventEnd = 0; if (m.cd) G.ventReadyAt = now() + m.cd; }
     if (m.id) {
       const v = S.SHIP.vents.find(v => v.id === m.id);
+      if (!was) Fx.puff(App.me.x, App.me.y);
       App.me.x = v.x; App.me.y = v.y;
       if (was) Sfx.ventMove(); else { Sfx.vent(); App.ventFx.push({ id: m.id, t: now() / 1000 }); }
     } else {
       Sfx.vent();
-      if (was) App.ventFx.push({ id: was, t: now() / 1000 });
+      if (was) { App.ventFx.push({ id: was, t: now() / 1000 }); Fx.puff(App.me.x, App.me.y); }
     }
     renderVentArrows();
   }
@@ -896,7 +953,7 @@
     const v = S.SHIP.vents.find(v => v.id === m.id);
     if (!v) return;
     App.ventFx.push({ id: m.id, t: now() / 1000 });
-    if (isPointVisible(v.x, v.y)) Sfx.vent();
+    if (isPointVisible(v.x, v.y)) { Sfx.vent(); Fx.puff(v.x, v.y); }
   }
 
   function renderVentArrows() {
@@ -950,7 +1007,7 @@
   function onMeeting(m) {
     const G = App.G;
     G.phase = 'meeting';
-    Tasks.close(true); closeMap();
+    Tasks.close(true); closeMap(); closeCams();
     G.sab = null; Sfx.alarm(false); $('#sabFlash').classList.remove('on');
     App.closedDoors = [];
     if (G.inVent) { G.inVent = null; renderVentArrows(); }
@@ -1202,7 +1259,7 @@
     const G = App.G;
     if (G) G.over = true;
     Sfx.alarm(false);
-    Tasks.close(true); closeMap();
+    Tasks.close(true); closeMap(); closeCams();
     $('#meeting').classList.remove('show');
     const won = m.winners.indexOf(App.you) >= 0;
     const fx = $('#gameOver');
@@ -1217,9 +1274,9 @@
       const roleTxt = { crew: 'La tripulación gana', impostor: 'Los impostores ganan', hiders: 'Los escondidos ganan', seeker: 'El buscador gana', racer: '' }[m.winner];
       $('#goReason').textContent = (roleTxt ? roleTxt + ' — ' : '') + m.reason;
       $('#goLineup').innerHTML = m.players.filter(p => m.winners.indexOf(p.id) >= 0).map((p, i) =>
-        `<div class="lu ${p.id === App.you ? 'me' : ''}" style="animation-delay:${0.3 + i * 0.1}s"><img src="${beanImg(p.color, p.hat, 200, { ghost: !p.alive })}"><span style="color:${p.role === 'impostor' || p.role === 'seeker' ? '#ff453a' : '#fff'}">${esc(p.name)}</span></div>`).join('');
+        `<div class="lu ${p.id === App.you ? 'me' : ''}" style="animation-delay:${0.3 + i * 0.1}s"><img src="${beanImg(p.color, p.hat, 200, { ghost: !p.alive })}"><span style="color:${p.role === 'impostor' || p.role === 'seeker' ? '#ff453a' : p.sub === 'sheriff' ? '#ffd60a' : p.sub === 'engineer' ? '#ff9f0a' : '#fff'}">${esc(p.name)}${p.sub ? `<small class="go-sub">${p.sub === 'sheriff' ? 'Sheriff' : 'Ingeniero'}</small>` : ''}</span></div>`).join('');
       $('#goRank').innerHTML = m.ranking ? m.ranking.map((r, i) => { const p = m.players.find(x => x.id === r.id) || {}; return `<div><span>${i + 1}. ${esc(p.name || '?')}</span><span>${r.done}/${r.total}</span></div>`; }).join('') : '';
-      if (won) Sfx.victory(); else Sfx.defeat();
+      if (won) { Sfx.victory(); Fx.confettiDom(fx); } else Sfx.defeat();
       App.G = null;
       App.mapId = 'lobby';
       App.me.init = false;
@@ -1288,11 +1345,13 @@
 
   // ================================================================ mapa
   let mapSab = false;
+  let mapAdmin = false;
   function openMap(sab) {
     const G = App.G;
     if (!G) return;
-    mapSab = !!sab && G.role === 'impostor';
-    $('#mapTitle').textContent = mapSab ? 'Sabotaje' : 'Mapa de la nave';
+    mapAdmin = sab === 'admin';
+    mapSab = sab === true && G.role === 'impostor';
+    $('#mapTitle').textContent = mapAdmin ? 'Administración · tripulantes por sala' : mapSab ? 'Sabotaje' : 'Mapa de la nave';
     $('#mapOverlay').classList.add('show');
     Sfx.open();
     renderSabButtons();
@@ -1370,7 +1429,21 @@
       c.fillStyle = 'rgba(255,255,255,0.9)';
       c.fillText(r.name, r.r.x + r.r.w / 2, r.r.y + r.r.h / 2 - (mapSab ? 40 : 0));
     }
-    if (!G.fake) {
+    if (mapAdmin) {
+      const pts = [];
+      for (const p of App.players.values()) if (!p.hidden && p.alive) pts.push(p);
+      if (G.alive && !G.inVent) pts.push(App.me);
+      for (const b of App.bodies) pts.push(b);
+      for (const r of S.SHIP.rooms) {
+        const inside = pts.filter(p => Shared.inRect(r.r, p.x, p.y));
+        inside.forEach((p, i) => {
+          const x = r.r.x + r.r.w / 2 - (inside.length - 1) * 30 + i * 60, y = r.r.y + r.r.h / 2 + 70;
+          c.fillStyle = p.color ? '#ff453a' : '#e6ecf5'; c.beginPath(); c.arc(x, y, 22, 0, 7); c.fill();
+          c.strokeStyle = '#0b0d12'; c.lineWidth = 5; c.stroke();
+        });
+      }
+    }
+    if (!G.fake && !mapAdmin) {
       for (const tk of G.tasks) {
         if (tk.done) continue;
         const st = tk.steps[tk.step];
@@ -1397,6 +1470,7 @@
     if (e.key === 'Escape') {
       if (Tasks.isOpen()) return Tasks.close();
       if ($('#mapOverlay').classList.contains('show')) return closeMap();
+      if ($('#camOverlay').classList.contains('show')) return closeCams();
       if (App.chatOpen) return toggleChat(false);
       const m = $$('.modal.show').pop(); if (m) return closeModal(m.id);
       return;
@@ -1412,6 +1486,7 @@
       case 'KeyQ': doKill(); break;
       case 'KeyV': doVent(); break;
       case 'KeyG': if (G && G.role === 'impostor') openMap(true); break;
+      case 'Digit1': case 'Digit2': case 'Digit3': case 'Digit4': case 'Digit5': case 'Digit6': case 'Digit7': case 'Digit8': sendEmote(+e.code.slice(5) - 1); break;
       case 'Tab': case 'KeyM': e.preventDefault(); if (G) { $('#mapOverlay').classList.contains('show') ? closeMap() : openMap(false); } break;
       case 'Enter': if ($('#btnChat').style.display !== 'none' || (G && G.phase === 'meeting')) { e.preventDefault(); toggleChat(true); } break;
     }
@@ -1448,6 +1523,62 @@
   })();
 
   $('#btnGear').addEventListener('click', openSettings);
+
+  // ---------------- emotes
+  function sendEmote(i) {
+    const G = App.G;
+    if (App.screen !== 'scrGame' || (G && G.phase === 'meeting')) return;
+    send({ t: 'emote', e: i });
+    $('#emoteWheel').classList.remove('show');
+  }
+  $('#emoteWheel').innerHTML = S.EMOTES.map((e, i) => `<button data-e="${i}">${e}<small>${i + 1}</small></button>`).join('');
+  $$('#emoteWheel button').forEach(b => b.addEventListener('click', () => sendEmote(+b.dataset.e)));
+  $('#btnEmote').addEventListener('click', () => { $('#emoteWheel').classList.toggle('show'); Sfx.pop(); });
+
+  // ---------------- cámaras de seguridad
+  function openCams() {
+    const grid = $('#camGrid');
+    grid.innerHTML = S.CAMERAS.map((cm, i) => `<div class="cam"><canvas data-i="${i}"></canvas><span>CAM ${i + 1} · ${cm.name}</span><i>● REC</i></div>`).join('');
+    $('#camOverlay').classList.add('show');
+    Sfx.camStatic();
+  }
+  function closeCams() { if ($('#camOverlay').classList.contains('show')) { $('#camOverlay').classList.remove('show'); Sfx.close(); } }
+  $('#camClose').addEventListener('click', closeCams);
+  $('#camOverlay').addEventListener('pointerdown', e => { if (e.target.id === 'camOverlay') closeCams(); });
+  function drawCams(t) {
+    if (!$('#camOverlay').classList.contains('show')) return;
+    if (!App.G) return closeCams();
+    const B = World.build(S.SHIP);
+    const VW = 720, VH = 450;
+    $$('#camGrid canvas').forEach(cv => {
+      const cm = S.CAMERAS[+cv.dataset.i];
+      const w = cv.clientWidth, h = cv.clientHeight, dpr = Math.min(2, devicePixelRatio || 1);
+      if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+      const c = cv.getContext('2d');
+      const k = cv.width / VW;
+      const x0 = cm.x - VW / 2, y0 = cm.y - VH / 2;
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      c.fillStyle = '#05070c'; c.fillRect(0, 0, cv.width, cv.height);
+      c.setTransform(k, 0, 0, k, -x0 * k, -y0 * k);
+      c.drawImage(B.canvas, x0, y0, VW, VH, x0, y0, VW, VH);
+      const ents = [];
+      for (const b of App.bodies) if (Shared.inRect({ x: x0, y: y0, w: VW, h: VH }, b.x, b.y)) ents.push({ y: b.y, d: () => Draw.deadBody(c, b.x, b.y, b.color) });
+      for (const p of App.players.values()) {
+        if (p.hidden || !p.alive) continue;
+        const meta = App.meta.get(p.id); if (!meta) continue;
+        if (Shared.inRect({ x: x0 - 40, y: y0 - 40, w: VW + 80, h: VH + 120 }, p.x, p.y)) ents.push({ y: p.y, d: () => Draw.bean(c, p.x, p.y, { color: meta.color, hat: meta.hat, flip: p.f, moving: p.m, walk: p.walk, time: t }) });
+      }
+      ents.sort((a, b) => a.y - b.y).forEach(e => e.d());
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      c.fillStyle = 'rgba(40,255,140,0.06)'; c.fillRect(0, 0, cv.width, cv.height);
+      c.fillStyle = 'rgba(0,0,0,0.18)';
+      for (let y = (t * 40) % 4; y < cv.height; y += 4) c.fillRect(0, y, cv.width, 1);
+      const g = c.createRadialGradient(cv.width / 2, cv.height / 2, cv.height * 0.3, cv.width / 2, cv.height / 2, cv.width * 0.7);
+      g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.6)');
+      c.fillStyle = g; c.fillRect(0, 0, cv.width, cv.height);
+      if (Math.random() < 0.02) { c.fillStyle = 'rgba(255,255,255,0.12)'; c.fillRect(0, Math.random() * cv.height, cv.width, 6); }
+    });
+  }
 
   // ================================================================ visión
   function built() { return World.build(S.MAPS[App.mapId]); }
@@ -1489,7 +1620,7 @@
   function canMove() {
     const G = App.G;
     if (App.screen !== 'scrGame' || !App.me.init) return false;
-    if (Tasks.isOpen() || anyModal() || $('#mapOverlay').classList.contains('show')) return false;
+    if (Tasks.isOpen() || anyModal() || $('#mapOverlay').classList.contains('show') || $('#camOverlay').classList.contains('show')) return false;
     if (document.activeElement && document.activeElement.tagName === 'INPUT') return false;
     if (App.fx || $('#roleReveal').classList.contains('show')) return false;
     if (!G) return true;
@@ -1516,6 +1647,7 @@
     render(ts, dt);
     if (App.fx) App.fx.draw();
     drawMap(ts);
+    drawCams(ts);
     requestAnimationFrame(frame);
   }
 
@@ -1545,7 +1677,7 @@
       if (Math.abs(ix) > 0.1) me.f = ix < 0 ? 1 : 0;
       me.walk += dt * 11 * Math.min(1, Math.hypot(ix, iy) + 0.3);
       const ph = Math.floor(me.walk / Math.PI);
-      if (ph !== lastStepPhase) { lastStepPhase = ph; if (!G || G.alive) Sfx.footstep(); }
+      if (ph !== lastStepPhase) { lastStepPhase = ph; if (!G || G.alive) { Sfx.footstep(); Fx.dust(me.x, me.y); } }
     }
     me.m = moving ? 1 : 0;
     // envío
@@ -1562,8 +1694,30 @@
     for (const p of App.players.values()) {
       const k = Math.min(1, dt * 12);
       p.x += (p.tx - p.x) * k; p.y += (p.ty - p.y) * k;
-      if (p.m) p.walk += dt * 11;
+      if (p.m) {
+        const before = Math.floor(p.walk / Math.PI);
+        p.walk += dt * 11;
+        if (Math.floor(p.walk / Math.PI) !== before && !p.hidden && (p.alive || !G) && isVisible(p)) Fx.dust(p.x, p.y);
+      }
+      if (G && !p.alive && !p.hidden && Math.random() < dt * 3) Fx.spark(p.x, p.y, '200,220,255');
     }
+    // mascotas: siguen a su dueño con retraso
+    const followers = [];
+    for (const p of App.players.values()) if (!p.hidden) followers.push([p.id, p.x, p.y, p.f, p.alive !== false]);
+    if (App.me.init) followers.push([App.you, me.x, me.y, me.f, !G || G.alive]);
+    for (const [id, ox, oy, f, alive] of followers) {
+      const meta = App.meta.get(id);
+      if (!meta || !meta.pet || meta.pet === 'none' || (G && !alive)) { App.pets.delete(id); continue; }
+      let pp = App.pets.get(id);
+      const tx = ox + (f ? 46 : -46), ty = oy + 6;
+      if (!pp || Math.hypot(pp.x - tx, pp.y - ty) > 400) { pp = { x: tx, y: ty, f, m: 0 }; App.pets.set(id, pp); }
+      const dx = tx - pp.x, dy = ty - pp.y, d = Math.hypot(dx, dy);
+      const k = Math.min(1, dt * (d > 60 ? 6 : 3.5));
+      pp.x += dx * k; pp.y += dy * k;
+      pp.m = d > 6;
+      if (Math.abs(dx) > 4) pp.f = dx < 0 ? 1 : 0;
+    }
+    Fx.update(dt);
     // cámara
     const c = App.cam;
     c.x += (me.x - c.x) * Math.min(1, dt * 14);
@@ -1653,8 +1807,16 @@
       ents.push({ y: App.me.y, draw: () => drawPlayer(App.me.x, App.me.y, myMeta, { flip: App.me.f, moving: App.me.m, walk: App.me.walk, ghost: iAmGhost, scan: Tasks.isOpen() && Tasks.current().game === 'scan' }, ts) });
       visibleNames.push({ x: App.me.x, y: App.me.y, meta: myMeta, ghost: iAmGhost, me: true });
     }
+    const visibleIds = new Set(visibleNames.map(n => n.meta.id));
+    for (const [id, pp] of App.pets) {
+      if (!visibleIds.has(id) || (id === App.you && G && G.inVent)) continue;
+      if (fogOn && !World.canSee(map, B.vgrid, eyeX, eyeY, pp.x, pp.y - 10, R, App.closedDoors)) continue;
+      const meta = App.meta.get(id);
+      ents.push({ y: pp.y, draw: () => Draw.pet(ctx, pp.x, pp.y, meta.pet, { color: meta.color, flip: pp.f, moving: pp.m, time: ts }) });
+    }
     ents.sort((a, b) => a.y - b.y);
     for (const e of ents) e.draw();
+    Fx.draw(ctx);
 
     // niebla de visión
     if (fogOn) {
@@ -1697,6 +1859,12 @@
       ctx.fillStyle = col;
       ctx.fillText(n.meta.name, n.x, y);
       ctx.globalAlpha = 1;
+      const em = App.emotes.get(n.meta.id);
+      if (em) {
+        const age = (now() - em.t) / 1000;
+        if (age > 2.7) App.emotes.delete(n.meta.id);
+        else { Fx.bubble(ctx, n.x, y - 18, S.EMOTES[em.e], age); ctx.font = '800 17px Inter, system-ui, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic'; }
+      }
     }
 
     // flechas a sabotajes

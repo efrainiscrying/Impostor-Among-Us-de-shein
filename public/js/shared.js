@@ -47,6 +47,20 @@
     { id: 'shein', name: 'Bolsa Shein' },
   ];
 
+  const PETS = [
+    { id: 'none', name: 'Ninguna' },
+    { id: 'mini', name: 'Mini tripulante' },
+    { id: 'dog', name: 'Perrito' },
+    { id: 'cat', name: 'Gatito' },
+    { id: 'robot', name: 'Robot' },
+    { id: 'hamster', name: 'Hámster' },
+    { id: 'alien', name: 'Alien' },
+    { id: 'ufo', name: 'OVNI' },
+    { id: 'slime', name: 'Slime' },
+  ];
+
+  const EMOTES = ['👋', '😂', '😱', '❤️', '🤔', '😡', '👀', '🎉'];
+
   const MODES = {
     classic: { name: 'Clásico', desc: 'Encuentra al impostor antes de que elimine a la tripulación.', min: 3 },
     hideseek: { name: 'Escondite', desc: 'Un buscador te caza. Escóndete, haz tareas y sobrevive al reloj.', min: 2 },
@@ -60,6 +74,8 @@
     { key: 'killCooldown', label: 'Enfriamiento de eliminación', type: 'num', min: 10, max: 60, step: 2.5, def: 25, unit: 's', group: 'Impostores', modes: ['classic'] },
     { key: 'killDistance', label: 'Distancia de eliminación', type: 'enum', options: ['Corta', 'Normal', 'Larga'], def: 1, group: 'Impostores', modes: ['classic', 'hideseek'] },
     { key: 'impVision', label: 'Visión del impostor', type: 'num', min: 0.25, max: 5, step: 0.25, def: 1.5, unit: 'x', group: 'Impostores', modes: ['classic', 'hideseek'] },
+    { key: 'engineers', label: 'Ingenieros (usan ventilas)', type: 'num', min: 0, max: 2, step: 1, def: 0, group: 'Roles', modes: ['classic'] },
+    { key: 'sheriffs', label: 'Sheriff (dispara al impostor)', type: 'num', min: 0, max: 1, step: 1, def: 0, group: 'Roles', modes: ['classic'] },
     { key: 'playerSpeed', label: 'Velocidad del jugador', type: 'num', min: 0.5, max: 3, step: 0.25, def: 1, unit: 'x', group: 'Tripulación' },
     { key: 'crewVision', label: 'Visión de la tripulación', type: 'num', min: 0.25, max: 5, step: 0.25, def: 1, unit: 'x', group: 'Tripulación' },
     { key: 'emergencyMeetings', label: 'Reuniones de emergencia', type: 'num', min: 0, max: 9, step: 1, def: 1, group: 'Reuniones', modes: ['classic'] },
@@ -377,12 +393,15 @@
   }
 
   const Shared = {
-    PLAYER_R, PLAYER_RV, BASE_SPEED, BASE_VISION, GRID, COLORS, HATS, MODES,
+    PLAYER_R, PLAYER_RV, BASE_SPEED, BASE_VISION, GRID, COLORS, HATS, PETS, EMOTES, MODES,
     SETTINGS_SCHEMA, KILL_DISTANCES, TASKS, SABOTAGE_STATIONS, MAPS, SHIP, LOBBY,
     defaultSettings, sanitizeSettings, inRect, inFloor, pointFree, canStand, moveWithCollision,
     roomAt, dist, buildVisionGrid, buildWalkGrid, lineOfSight, spawnPoints,
     SABOTAGE_TIMES: { reactor: 45, o2: 45, lights: 0 },
     SABOTAGE_COOLDOWN: 30, DOOR_TIME: 10, DOOR_COOLDOWN: 25,
+    ADMIN_TABLE: { x: 2535, y: 1420 }, SECURITY_DESK: { x: 1040, y: 1110 },
+    CAMERAS: [{ x: 1140, y: 480, name: 'Pasillo superior' }, { x: 760, y: 1500, name: 'Pasillo izquierdo' }, { x: 3060, y: 1180, name: 'Pasillo derecho' }, { x: 2240, y: 1940, name: 'Pasillo inferior' }],
+    ENGINEER_VENT_TIME: 10, ENGINEER_VENT_COOLDOWN: 15,
     INTERACT_RANGE: 110, REPORT_RANGE: 190, BUTTON_RANGE: 170, VENT_RANGE: 90,
   };
 
