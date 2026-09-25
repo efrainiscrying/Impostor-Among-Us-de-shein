@@ -140,7 +140,43 @@ function botChat(room, p, text) {
 }
 
 function initAI(p) {
-  p.ai = { path: [], goal: null, wait: 0, stuck: 0, suspicion: {}, think: 0, lastRoom: null, chase: null, chaseT: 0 };
+  p.ai = {
+    path: [], goal: null, stuck: 0, suspicion: {}, think: 0, lastRoom: null, chase: null, chaseT: 0,
+    // cada bot arranca a su ritmo y tiene su propia forma de elegir tareas
+    wait: Date.now() + rnd(0, 2500),
+    curTask: null,
+    style: pick(['near', 'near', 'random', 'far']),
+    wander: rnd(0.05, 0.3),
+  };
+}
+
+// Elige la siguiente tarea según la personalidad del bot, para que no vayan todos al mismo sitio
+function chooseTask(room, p) {
+  const ai = p.ai;
+  const cur = ai.curTask && p.tasks.find(t => t.id === ai.curTask && !t.done);
+  if (cur) return cur;
+  const left = p.tasks.filter(t => !t.done);
+  if (!left.length) return null;
+  // cuántos bots ya van a esa misma zona: penaliza para que se repartan
+  const busy = {};
+  for (const q of room.players.values()) {
+    if (q === p || !q.bot || !q.ai || !q.ai.curTask) continue;
+    const t = q.tasks.find(x => x.id === q.ai.curTask);
+    if (t && !t.done) { const st = t.steps[t.step]; const k = Math.round(st.x / 300) + ',' + Math.round(st.y / 300); busy[k] = (busy[k] || 0) + 1; }
+  }
+  const crowd = st => busy[Math.round(st.x / 300) + ',' + Math.round(st.y / 300)] || 0;
+  const dist = t => { const st = t.steps[t.step]; return Math.hypot(p.x - st.x, p.y - st.y) + crowd(st) * 350; };
+  let next;
+  if (ai.style === 'random' || left.length === 1) next = pick(left.filter(t => crowd(t.steps[t.step]) < 2)) || pick(left);
+  else {
+    const sorted = left.slice().sort((a, b) => dist(a) - dist(b));
+    if (ai.style === 'far') sorted.reverse();
+    // casi siempre la primera opción, a veces la segunda o tercera
+    const r = Math.random();
+    next = sorted[Math.min(sorted.length - 1, r < 0.6 ? 0 : r < 0.85 ? 1 : 2)];
+  }
+  ai.curTask = next.id;
+  return next;
 }
 
 // ---------------------------------------------------------------- tick
@@ -234,6 +270,7 @@ function playAI(room, p, dt, now) {
       const t = p.tasks.find(x => x.id === ai.doing.id);
       p.scanning = false;
       if (t && !t.done && !p.fake) room.onTask(p, t.id, t.step);
+      if (!t || t.done) ai.curTask = null;
       if (p.fake) ai.fakeDone = (ai.fakeDone || 0) + 1;
       ai.doing = null;
     }
@@ -245,7 +282,9 @@ function playAI(room, p, dt, now) {
   ai.stuckOut = false;
   if (now < ai.wait) return;
 
-  const next = p.fake ? null : p.tasks.find(t => !t.done);
+  // A veces se da una vuelta antes de seguir con las tareas (no en la carrera)
+  const roam = !p.fake && s.mode !== 'race' && !ai.curTask && Math.random() < ai.wander;
+  const next = p.fake || roam ? null : chooseTask(room, p);
   if (next && (p.alive || p.role === 'crew' || p.role === 'hider' || p.role === 'racer')) {
     const st = next.steps[next.step];
     if (Math.hypot(p.x - st.x, p.y - st.y) < 50) {
@@ -434,7 +473,7 @@ function onKill(room, killer, victim) {
 function afterMeeting(room) {
   for (const p of room.players.values()) {
     if (!p.bot || !p.ai) continue;
-    p.ai.path = []; p.ai.doing = null; p.ai.wait = 0; p.ai.chase = null; p.ai.pings = null;
+    p.ai.path = []; p.ai.doing = null; p.ai.wait = Date.now() + rnd(0, 2500); p.ai.chase = null; p.ai.pings = null; p.ai.curTask = null;
   }
 }
 

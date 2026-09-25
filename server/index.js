@@ -119,6 +119,10 @@ wss.on('connection', (ws) => {
     if (!user) return;
     if (msg.t === 'ping') return reply({ t: 'pong', c: msg.c });
 
+    try { route(msg, reply); } catch (err) { console.error('Error procesando', msg.t, err); }
+  });
+
+  const route = (msg, reply) => {
     switch (msg.t) {
       case 'profile':
         auth.updateProfile(user, msg);
@@ -159,7 +163,7 @@ wss.on('connection', (ws) => {
       default:
         if (room && player && !room.destroyed) room.handle(player, msg);
     }
-  });
+  };
 
   ws.on('close', () => {
     if (room && player && player.ws === ws) {
@@ -179,6 +183,10 @@ setInterval(() => {
     try { ws.ping(); } catch (e) { /* */ }
   }
 }, 20000);
+
+// Un error inesperado nunca debe tumbar el servidor en plena partida
+process.on('uncaughtException', err => console.error('Error no controlado:', err));
+process.on('unhandledRejection', err => console.error('Promesa rechazada:', err));
 
 server.listen(PORT, () => {
   console.log(`Among Us (Temu) listo en http://localhost:${PORT}`);

@@ -535,3 +535,10 @@ input[type=range]::-moz-range-thumb { width: 26px; height: 26px; border-radius: 
 .dev-badge { position: absolute; left: 50%; bottom: calc(6px + var(--safe-b)); transform: translateX(-50%); font-size: 11px; font-weight: 900; letter-spacing: 1.5px; color: #ffcc66; background: rgba(40,30,0,.7); padding: 4px 10px; border-radius: 8px; pointer-events: none; display: none; }
 .dev-badge.show { display: block; }
 @media (max-width: 820px) { .menu-row { grid-template-columns: 1fr 1fr; } }
+
+/* votación: mi voto marcado sin recargar la tableta */
+.vcard .mytag { position: absolute; bottom: -9px; right: 10px; background: #30d158; color: #fff; font-size: 10px; font-weight: 900; padding: 2px 8px; border-radius: 8px; border: 2px solid #1a6b30; display: none; }
+.vcard.myvote { box-shadow: 0 0 0 3px #30d158, 0 6px 18px rgba(48,209,88,.35); }
+.vcard.myvote .mytag { display: block; animation: pop .4s var(--spring); }
+#skipBtn.myvote { background: #30d158; color: #fff; border-color: #1a6b30; opacity: 1; }
+.vcard:not(.votable):not(.picking) { cursor: default; }

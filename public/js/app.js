@@ -305,7 +305,7 @@
     const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws');
     App.ws = ws;
     ws.onopen = () => { App.retry = 0; send({ t: 'auth', token: App.token }); };
-    ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch (err) { return; } handle(m); };
+    ws.onmessage = e => { let m; try { m = JSON.parse(e.data); } catch (err) { return; } try { handle(m); } catch (err) { console.error('Error al procesar', m && m.t, err); } };
     ws.onclose = () => {
       App.connected = false;
       if (!App.token) return;
@@ -1087,40 +1087,83 @@
     Sfx.swoosh();
   }
 
+  // La tableta se construye una sola vez por reunión; después solo se actualiza lo que cambia
   function renderVoteCards() {
     const G = App.G;
-    const M = G.meeting;
+    const M = G && G.meeting;
     if (!M) return;
+    if (!M.built) buildVoteCards(M);
+    updateVoteCards(M);
+  }
+
+  function canVoteNow(M) {
+    return M.alive.has(App.you) && !M.myVote && now() >= M.discussEnd && !M.results;
+  }
+
+  function buildVoteCards(M) {
+    const G = App.G;
     const ids = App.room.players.map(p => p.id);
     ids.sort((a, b) => (M.alive.has(b) ? 1 : 0) - (M.alive.has(a) ? 1 : 0));
-    const iAlive = M.alive.has(App.you);
-    const canVote = iAlive && !M.myVote && now() >= M.discussEnd && !M.results;
     $('#voteGrid').innerHTML = ids.map(id => {
       const p = App.meta.get(id) || {};
       const alive = M.alive.has(id);
       const nameImp = (G.role === 'impostor' && G.mates.has(id)) ? 'imp' : '';
-      const voters = M.results ? (M.results.voters[id] || []).map((c, i) => `<img style="animation-delay:${0.2 + Math.min(i * 0.25, 2.5)}s" src="${c === 'anon' ? beanImg('gray', 'none', 40, { noShadow: true }) : beanImg(c, 'none', 40, { noShadow: true })}">`).join('') : '';
-      return `<div class="vcard ${alive ? '' : 'dead'} ${id === App.you ? 'me' : ''} ${M.picking === id ? 'picking' : ''}" data-id="${id}">
+      return `<div class="vcard ${alive ? '' : 'dead'} ${id === App.you ? 'me' : ''}" data-id="${id}">
         ${id === M.caller ? `<span class="tag">${M.kind === 'report' ? '📢 REPORTÓ' : '🚨 CONVOCÓ'}</span>` : ''}
         <img src="${beanImg(p.color, p.hat, 80, { noShadow: true, ghost: false })}">
         <div class="vname ${nameImp}">${esc(p.name || '?')}</div>
-        ${M.voted.has(id) && !M.results ? '<span class="ivoted">VOTÓ</span>' : ''}
-        <div class="confirm"><button class="yes" data-v="${id}">${Icons.svg('check')}</button><button class="no" data-x="1">${Icons.svg('x')}</button></div>
-        <div class="voters">${voters}</div>
+        <span class="ivoted" style="display:none">VOTÓ</span>
+        <span class="mytag">TU VOTO</span>
+        <div class="confirm"><button class="yes">${Icons.svg('check')}</button><button class="no">${Icons.svg('x')}</button></div>
+        <div class="voters"></div>
       </div>`;
     }).join('');
-    $('#skipVoters').innerHTML = M.results ? (M.results.voters.skip || []).map((c, i) => `<img style="animation-delay:${0.2 + Math.min(i * 0.25, 2.5)}s" src="${beanImg(c === 'anon' ? 'gray' : c, 'none', 40, { noShadow: true })}">`).join('') : '';
-    $('#skipBtn').disabled = !canVote;
-    $$('#voteGrid .vcard').forEach(card => card.addEventListener('click', e => {
-      const id = card.dataset.id;
-      if (e.target.closest('.yes')) { castVote(id); e.stopPropagation(); return; }
-      if (e.target.closest('.no')) { M.picking = null; renderVoteCards(); e.stopPropagation(); return; }
-      if (!canVote || !M.alive.has(id)) return;
-      M.picking = M.picking === id ? null : id;
-      Sfx.tap();
-      renderVoteCards();
-    }));
+    $('#skipVoters').innerHTML = '';
+    $('#skipBtn').classList.remove('myvote');
+    M.built = true;
   }
+
+  function voterImgs(list) {
+    return (list || []).map((c, i) => `<img style="animation-delay:${0.2 + Math.min(i * 0.25, 2.5)}s" src="${beanImg(c === 'anon' ? 'gray' : c, 'none', 40, { noShadow: true })}">`).join('');
+  }
+
+  function updateVoteCards(M) {
+    const canVote = canVoteNow(M);
+    $$('#voteGrid .vcard').forEach(card => {
+      const id = card.dataset.id;
+      card.classList.toggle('picking', M.picking === id);
+      card.classList.toggle('myvote', M.myVote === id);
+      card.classList.toggle('votable', canVote && M.alive.has(id));
+      const badge = card.querySelector('.ivoted');
+      const showBadge = M.voted.has(id) && !M.results;
+      if ((badge.style.display !== 'none') !== showBadge) badge.style.display = showBadge ? '' : 'none';
+      if (M.results && !card.dataset.res) {
+        card.dataset.res = '1';
+        card.querySelector('.voters').innerHTML = voterImgs(M.results.voters[id]);
+      }
+    });
+    if (M.results && !$('#skipVoters').dataset.res) {
+      $('#skipVoters').dataset.res = '1';
+      $('#skipVoters').innerHTML = voterImgs(M.results.voters.skip);
+    }
+    if (!M.results) delete $('#skipVoters').dataset.res;
+    $('#skipBtn').disabled = !canVote;
+    $('#skipBtn').classList.toggle('myvote', M.myVote === 'skip');
+  }
+
+  // Un solo manejador para toda la tableta (no se recrea en cada voto)
+  $('#voteGrid').addEventListener('click', e => {
+    const M = App.G && App.G.meeting;
+    const card = e.target.closest('.vcard');
+    if (!M || !card) return;
+    const id = card.dataset.id;
+    if (e.target.closest('.yes')) { e.stopPropagation(); castVote(id); return; }
+    if (e.target.closest('.no')) { e.stopPropagation(); M.picking = null; updateVoteCards(M); return; }
+    if (!canVoteNow(M) || !M.alive.has(id)) return;
+    M.picking = M.picking === id ? null : id;
+    Sfx.tap();
+    updateVoteCards(M);
+  });
 
   function castVote(id) {
     const M = App.G.meeting;
@@ -1867,19 +1910,22 @@
     lastT = t;
     const ts = t / 1000;
     if (App.screen !== 'scrGame') {
-      drawMenuBg(ts, dt);
-      drawHero(ts);
-      drawCustom(ts);
       requestAnimationFrame(frame);
+      try { drawMenuBg(ts, dt); drawHero(ts); drawCustom(ts); } catch (err) { console.error(err); }
       return;
     }
-    drawCustom(ts);
-    update(dt, t);
-    render(ts, dt);
-    if (App.fx) App.fx.draw();
-    drawMap(ts);
-    drawCams(ts);
     requestAnimationFrame(frame);
+    // Si algo falla en un fotograma, se registra y el juego sigue (antes se congelaba)
+    try {
+      drawCustom(ts);
+      update(dt, t);
+      render(ts, dt);
+      if (App.fx) App.fx.draw();
+      drawMap(ts);
+      drawCams(ts);
+    } catch (err) {
+      if (!frame.lastErr || t - frame.lastErr > 5000) { frame.lastErr = t; console.error('Error en el fotograma:', err); }
+    }
   }
 
   function update(dt, t) {
