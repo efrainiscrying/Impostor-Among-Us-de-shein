@@ -25,10 +25,12 @@
     <button class="btn primary xl pulse" id="btnStart">Toca para comenzar</button>
     <div class="splash-foot">Hecho para ti y tus amigos · v1.0</div>
   </div>
+  <button class="lang-fab glass" data-lang-open><span>🌐</span><b class="lang-cur">ES</b></button>
 </section>
 
 <!-- ============ LOGIN ============ -->
 <section id="scrAuth" class="screen">
+  <button class="lang-fab glass" data-lang-open><span>🌐</span><b class="lang-cur">ES</b></button>
   <div class="auth-wrap">
     <div class="logo"><span class="logo-main">AMONG US</span><span class="logo-tag">TEMU</span></div>
     <div class="glass auth-card">
@@ -53,7 +55,7 @@
         <div class="form-error" id="authError"></div>
         <button class="btn primary block" id="authSubmit" type="submit">Entrar</button>
       </form>
-      <p class="auth-hint" id="authHint">¿No tienes cuenta? Toca <b>Crear cuenta</b>. Solo necesitas un usuario y una contraseña.</p>
+      <p class="auth-hint" id="authHint" data-i18n-html>¿No tienes cuenta? Toca <b>Crear cuenta</b>. Solo necesitas un usuario y una contraseña.</p>
     </div>
   </div>
 </section>
@@ -78,6 +80,7 @@
       <div class="menu-row">
         <button class="pill-btn glass" id="mCustomBtn"><span data-icon="shirt"></span>Personalizar</button>
         <button class="pill-btn glass" id="mSettingsBtn"><span data-icon="gear"></span>Ajustes</button>
+        <button class="pill-btn glass" data-lang-open><span class="pill-emoji">🌐</span><em class="lang-name">Español</em></button>
         <button class="pill-btn glass" id="mLogoutBtn"><span data-icon="exit"></span>Salir</button>
         <button class="pill-btn glass dev-pill" id="mDevBtn"><span data-icon="code"></span><em id="mDevLabel">Modo developer</em></button>
       </div>
@@ -271,6 +274,7 @@
     <label class="slider-row"><span>Efectos</span><input type="range" min="0" max="1" step="0.05" id="volSfx"></label>
     <label class="slider-row"><span>Música</span><input type="range" min="0" max="1" step="0.05" id="volMusic"></label>
     <label class="slider-row"><span>Ambiente</span><input type="range" min="0" max="1" step="0.05" id="volAmb"></label>
+    <div class="slider-row lang-row"><span>Idioma</span><div class="lang-seg"><button data-set-lang="es">🇪🇸 Español</button><button data-set-lang="en">🇺🇸 English</button></div></div>
     <div class="keys-help">
       <div><kbd>WASD</kbd>/<kbd>↑↓←→</kbd> moverse</div>
       <div><kbd>E</kbd>/<kbd>Espacio</kbd> usar · <kbd>R</kbd> reportar</div>
@@ -306,7 +310,7 @@
       <button class="btn primary block" id="devGo">Entrar</button>
     </div>
     <div id="devOnBox">
-      <p class="dev-hint">✅ Modo developer <b>activo</b> en tu cuenta.<br>Los poderes solo funcionan en <b>salas de prueba</b> donde eres el único humano (con bots), así nunca afectan a tus amigos.</p>
+      <p class="dev-hint" data-i18n-html>✅ Modo developer <b>activo</b> en tu cuenta.<br>Los poderes solo funcionan en <b>salas de prueba</b> donde eres el único humano (con bots), así nunca afectan a tus amigos.</p>
       <button class="btn primary block" id="devTestRoom">Crear sala de pruebas</button>
       <button class="btn ghost block" id="devOff" style="margin-top:10px">Desactivar modo developer</button>
     </div>
@@ -318,6 +322,7 @@
 <div class="fade" id="fade"></div>
 
 <script src="js/shared.js"></script>
+<script src="js/i18n.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/draw.js"></script>
 <script src="js/world.js"></script>

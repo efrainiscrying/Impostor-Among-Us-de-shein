@@ -29,7 +29,7 @@
   function toast(text, err) {
     const el = document.createElement('div');
     el.className = 'toast' + (err ? ' err' : '');
-    el.textContent = text;
+    el.textContent = T(text);
     $('#toasts').appendChild(el);
     setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 400); }, 3200);
   }
@@ -53,7 +53,7 @@
     return new Promise(res => {
       const m = document.createElement('div');
       m.className = 'modal';
-      m.innerHTML = `<div class="sheet glass small"><header><b>¿Seguro?</b></header><p style="margin:0 0 18px;color:var(--muted)">${esc(text)}</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><button class="btn ghost" data-a="0">Cancelar</button><button class="btn danger" data-a="1">${esc(okLabel || 'Sí')}</button></div></div>`;
+      m.innerHTML = `<div class="sheet glass small"><header><b>${T('¿Seguro?')}</b></header><p style="margin:0 0 18px;color:var(--muted)">${esc(T(text))}</p><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><button class="btn ghost" data-a="0">${T('Cancelar')}</button><button class="btn danger" data-a="1">${esc(T(okLabel || 'Sí'))}</button></div></div>`;
       document.body.appendChild(m);
       requestAnimationFrame(() => m.classList.add('show'));
       m.addEventListener('click', e => {
@@ -110,15 +110,15 @@
     $$('#authSeg .seg').forEach(x => x.classList.toggle('active', x === b));
     $('#authSeg').classList.toggle('reg', authMode === 'register');
     $('.auth-card').classList.toggle('reg', authMode === 'register');
-    $('#authSubmit').textContent = authMode === 'register' ? 'Crear cuenta' : 'Entrar';
+    $('#authSubmit').textContent = T(authMode === 'register' ? 'Crear cuenta' : 'Entrar');
     $('#authPass').autocomplete = authMode === 'register' ? 'new-password' : 'current-password';
-    $('#authHint').innerHTML = authMode === 'register' ? 'Elige un nombre (3-14 letras) y una contraseña que recuerdes.' : '¿No tienes cuenta? Toca <b>Crear cuenta</b>. Solo necesitas un usuario y una contraseña.';
+    $('#authHint').innerHTML = T(authMode === 'register' ? 'Elige un nombre (3-14 letras) y una contraseña que recuerdes.' : '¿No tienes cuenta? Toca <b>Crear cuenta</b>. Solo necesitas un usuario y una contraseña.');
     $('#authError').textContent = '';
   }));
 
   function authError(t) {
     const e = $('#authError');
-    e.textContent = t;
+    e.textContent = T(t);
     e.classList.remove('shake'); void e.offsetWidth; e.classList.add('shake');
     Sfx.error();
   }
@@ -191,7 +191,7 @@
     $('#heroName').textContent = u.username;
     const st = u.stats || {};
     $('#stats').innerHTML = [['Partidas', st.games || 0], ['Victorias', st.wins || 0], ['Tareas', st.tasks || 0], ['Eliminaciones', st.kills || 0]]
-      .map(s => `<div class="stat glass"><b>${s[1]}</b><small>${s[0]}</small></div>`).join('');
+      .map(s => `<div class="stat glass"><b>${s[1]}</b><small>${T(s[0])}</small></div>`).join('');
   }
 
   let createMode = 'classic';
@@ -218,7 +218,7 @@
     send({ t: 'join', code: c });
     closeModal('mJoin');
   });
-  $('#mBrowseBtn').addEventListener('click', () => { $('#roomList').innerHTML = '<div class="empty">Buscando salas…</div>'; openModal('mBrowse'); send({ t: 'rooms' }); });
+  $('#mBrowseBtn').addEventListener('click', () => { $('#roomList').innerHTML = `<div class="empty">${T('Buscando salas…')}</div>`; openModal('mBrowse'); send({ t: 'rooms' }); });
   $('#browseRefresh').addEventListener('click', () => send({ t: 'rooms' }));
   $('#mPracticeBtn').addEventListener('click', () => { App.pendingBots = 5; send({ t: 'create', mode: 'classic', isPublic: false }); });
   $('#mCustomBtn').addEventListener('click', openCustomize);
@@ -227,8 +227,8 @@
 
   function renderRooms(list) {
     const el = $('#roomList');
-    if (!list.length) { el.innerHTML = '<div class="empty">No hay salas públicas ahora mismo.<br>¡Crea una y compártela!</div>'; return; }
-    el.innerHTML = list.map(r => `<button class="room-item" data-code="${r.code}"><div><b>Sala de ${esc(r.host)}</b><small>${MODE_ICON[r.mode]} ${S.MODES[r.mode].name} · ${r.code}</small></div><b>${r.count}/${r.max}</b></button>`).join('');
+    if (!list.length) { el.innerHTML = `<div class="empty">${T('No hay salas públicas ahora mismo.<br>¡Crea una y compártela!')}</div>`; return; }
+    el.innerHTML = list.map(r => `<button class="room-item" data-code="${r.code}"><div><b>${T('Sala de ' + esc(r.host))}</b><small>${MODE_ICON[r.mode]} ${S.MODES[r.mode].name} · ${r.code}</small></div><b>${r.count}/${r.max}</b></button>`).join('');
     el.querySelectorAll('.room-item').forEach(b => b.addEventListener('click', () => { send({ t: 'join', code: b.dataset.code }); closeModal('mBrowse'); }));
   }
 
@@ -329,10 +329,10 @@
       case 'joined': onJoined(m); break;
       case 'room': onRoom(m); break;
       case 'left': goHome(); break;
-      case 'kicked': toast(m.reason, true); goHome(); break;
+      case 'kicked': toast(T(m.reason), true); goHome(); break;
       case 'error': toast(m.text, true); Sfx.error(); break;
       case 'toast': toast(m.text); break;
-      case 'chat': addChat(m); break;
+      case 'chat': if (m.sys || m.bot) m.text = T(m.text); addChat(m); break;
       case 's': onState(m); break;
       case 'pos': App.me.x = m.x; App.me.y = m.y; break;
       case 'start': onStart(m); break;
@@ -442,9 +442,9 @@
   $('#copyLink').addEventListener('click', async () => {
     const url = location.origin + '/?sala=' + App.room.code;
     try {
-      if (navigator.share && document.body.classList.contains('touch')) await navigator.share({ title: 'Among Us (Temu)', text: '¡Únete a mi partida!', url });
+      if (navigator.share && document.body.classList.contains('touch')) await navigator.share({ title: 'Among Us (Temu)', text: T('¡Únete a mi partida!'), url });
       else { await navigator.clipboard.writeText(url); toast('🔗 ¡Enlace copiado! Mándalo a tus amigos.'); }
-    } catch (e) { toast('Código de sala: ' + App.room.code); }
+    } catch (e) { toast(T('Código de sala: ' + App.room.code)); }
   });
 
   function updateLobbyHud() {
@@ -458,7 +458,7 @@
     st.style.display = host ? '' : 'none';
     const min = S.MODES[r.settings.mode].min;
     st.classList.toggle('dim', n < min);
-    st.textContent = App.countdownEnd ? 'Cancelar' : n < min ? `Faltan ${min - n}` : 'Empezar';
+    st.textContent = T(App.countdownEnd ? 'Cancelar' : n < min ? `Faltan ${min - n}` : 'Empezar');
   }
   let cdTimer = null;
   function onCountdown(m) {
@@ -501,7 +501,7 @@
     const s = r.settings;
     const pick = m => { if (!host) return; sendSettings({ mode: m }); };
     renderModeCards($('#rulesModes'), s.mode, pick, true);
-    $('#rulesNote').textContent = host ? S.MODES[s.mode].desc : 'Solo el anfitrión puede cambiar las reglas.';
+    $('#rulesNote').textContent = host ? S.MODES[s.mode].desc : T('Solo el anfitrión puede cambiar las reglas.');
     const grid = $('#rulesGrid');
     grid.classList.toggle('readonly', !host);
     let html = '', group = '';
@@ -509,7 +509,7 @@
       if (f.modes && f.modes.indexOf(s.mode) < 0) continue;
       if (f.group !== group) { group = f.group; html += `<div class="rule group">${group}</div>`; }
       let val;
-      if (f.type === 'bool') val = s[f.key] ? 'Sí' : 'No';
+      if (f.type === 'bool') val = T(s[f.key] ? 'Sí' : 'No');
       else if (f.type === 'enum') val = f.options[s[f.key]];
       else val = s[f.key] + (f.unit || '');
       html += `<div class="rule"><span>${f.label}</span><div class="ctl"><button class="step" data-k="${f.key}" data-d="-1">−</button><span class="val">${val}</span><button class="step" data-k="${f.key}" data-d="1">+</button></div></div>`;
@@ -529,7 +529,7 @@
     $('#botRow').style.display = host ? '' : 'none';
     $('#publicRow').style.display = host ? '' : 'none';
     $('#rulesPublic').checked = !!r.isPublic;
-    $('#playerList').innerHTML = r.players.map(p => `<div class="pl ${p.connected === false ? 'off' : ''}"><img src="${beanImg(p.color, p.hat, 72, { noShadow: true })}"><b>${esc(p.name)}${p.bot ? ' 🤖' : ''}</b>${p.host ? `<span class="crown">${Icons.svg('crown')}</span>` : ''}${host && p.id !== App.you ? `<button class="kick" data-id="${p.id}" title="Expulsar">${Icons.svg('x')}</button>` : ''}</div>`).join('');
+    $('#playerList').innerHTML = r.players.map(p => `<div class="pl ${p.connected === false ? 'off' : ''}"><img src="${beanImg(p.color, p.hat, 72, { noShadow: true })}"><b>${esc(p.name)}${p.bot ? ' 🤖' : ''}</b>${p.host ? `<span class="crown">${Icons.svg('crown')}</span>` : ''}${host && p.id !== App.you ? `<button class="kick" data-id="${p.id}" title="${T('Expulsar')}">${Icons.svg('x')}</button>` : ''}</div>`).join('');
     $$('#playerList .kick').forEach(b => b.addEventListener('click', () => send({ t: 'kick', id: b.dataset.id })));
   }
   function sendSettings(ch) {
@@ -567,7 +567,7 @@
     syncMeta(m.players);
     const G = App.G = {
       mode: m.mode, settings: m.settings, role: m.role, mates: new Set(m.mates || []), seeker: m.seeker,
-      tasks: m.tasks || [], fake: m.fake, alive: m.alive, phase: m.phase, sub: m.sub || null, ventEnd: 0, ventReadyAt: 0,
+      tasks: (m.tasks || []).map(tk => Object.assign(tk, { name: T(tk.name) })), fake: m.fake, alive: m.alive, phase: m.phase, sub: m.sub || null, ventEnd: 0, ventReadyAt: 0,
       killReadyAt: t + (m.killIn || 0), emergencies: m.emergencies,
       emergencyReadyAt: t + (m.introIn || 0) + m.settings.emergencyCooldown * 1000,
       hsEndAt: t + (m.hsEndIn || 0), seekerReleaseAt: t + (m.seekerIn || 0), finalHide: m.finalHide,
@@ -607,29 +607,29 @@
     let lineupIds;
     const all = App.room.players.map(p => p.id);
     if (G.role === 'impostor') {
-      title.textContent = 'Impostor'; title.className = 'role-title imp';
+      title.textContent = T('Impostor'); title.className = 'role-title imp';
       const n = G.mates.size;
-      sub.innerHTML = n > 1 ? `Tus compañeros impostores están contigo. <b>Elimina a la tripulación.</b>` : '<b>Elimina a la tripulación</b> sin que te descubran.';
+      sub.innerHTML = T(n > 1 ? 'Tus compañeros impostores están contigo. <b>Elimina a la tripulación.</b>' : '<b>Elimina a la tripulación</b> sin que te descubran.');
       lineupIds = [...G.mates];
     } else if (G.role === 'crew') {
       const n = Math.min(G.settings.impostors, Math.max(1, Math.floor((all.length - 1) / 2)));
-      const nTxt = `Hay <b>${n} impostor${n > 1 ? 'es' : ''}</b> entre nosotros.`;
-      if (G.sub === 'sheriff') { title.textContent = 'Sheriff'; title.className = 'role-title sheriff'; sub.innerHTML = `${nTxt}<br>Dispara al impostor… <b>si fallas, mueres tú.</b>`; }
-      else if (G.sub === 'engineer') { title.textContent = 'Ingeniero'; title.className = 'role-title eng'; sub.innerHTML = `${nTxt}<br>Puedes esconderte en las <b>ventilas</b> unos segundos.`; }
-      else { title.textContent = 'Tripulante'; title.className = 'role-title crew'; sub.innerHTML = nTxt; }
+      const nTxt = T(n > 1 ? `Hay <b>${n} impostores</b> entre nosotros.` : 'Hay <b>1 impostor</b> entre nosotros.');
+      if (G.sub === 'sheriff') { title.textContent = T('Sheriff'); title.className = 'role-title sheriff'; sub.innerHTML = `${nTxt}<br>${T('Dispara al impostor… <b>si fallas, mueres tú.</b>')}`; }
+      else if (G.sub === 'engineer') { title.textContent = T('Ingeniero'); title.className = 'role-title eng'; sub.innerHTML = `${nTxt}<br>${T('Puedes esconderte en las <b>ventilas</b> unos segundos.')}`; }
+      else { title.textContent = T('Tripulante'); title.className = 'role-title crew'; sub.innerHTML = nTxt; }
       lineupIds = all;
     } else if (G.role === 'seeker') {
-      title.textContent = 'Buscador'; title.className = 'role-title seek';
-      sub.innerHTML = 'Atrapa a todos antes de que se acabe el tiempo. <b>Sales en 10 segundos.</b>';
+      title.textContent = T('Buscador'); title.className = 'role-title seek';
+      sub.innerHTML = T('Atrapa a todos antes de que se acabe el tiempo. <b>Sales en 10 segundos.</b>');
       lineupIds = [App.you];
     } else if (G.role === 'hider') {
-      title.textContent = 'Escondido'; title.className = 'role-title crew';
+      title.textContent = T('Escondido'); title.className = 'role-title crew';
       const sk = App.meta.get(G.seeker);
-      sub.innerHTML = `El buscador es <b>${esc(sk ? sk.name : '?')}</b>. ¡Escóndete y haz tareas!`;
+      sub.innerHTML = T(`El buscador es <b>${esc(sk ? sk.name : '?')}</b>. ¡Escóndete y haz tareas!`);
       lineupIds = all.filter(id => id !== G.seeker);
     } else {
-      title.textContent = 'Carrera'; title.className = 'role-title crew';
-      sub.innerHTML = 'Completa todas tus tareas <b>antes que nadie</b>.';
+      title.textContent = T('Carrera'); title.className = 'role-title crew';
+      sub.innerHTML = T('Completa todas tus tareas <b>antes que nadie</b>.');
       lineupIds = all;
     }
     const ordered = [App.you].concat(lineupIds.filter(id => id !== App.you));
@@ -691,7 +691,7 @@
     show('#actReport', G && G.mode === 'classic');
     show('#actKill', G && (G.role === 'impostor' || G.role === 'seeker' || G.sub === 'sheriff'));
     show('#actVent', imp || (G && G.sub === 'engineer'));
-    $('#actKill').querySelector('em').textContent = G && G.sub === 'sheriff' ? 'DISPARAR' : 'MATAR';
+    $('#actKill').querySelector('em').textContent = T(G && G.sub === 'sheriff' ? 'DISPARAR' : 'MATAR');
     show('#actSabotage', imp);
     updateChatButton();
     updateTaskPanel(true);
@@ -720,21 +720,21 @@
     if (G.mode === 'race' && G.race) {
       const mine = G.race.find(r => r.id === App.you);
       $('#tpFill').style.width = mine ? (mine.done / Math.max(1, mine.total) * 100) + '%' : '0';
-      bar.querySelector('.tp-label').textContent = 'TU PROGRESO';
+      bar.querySelector('.tp-label').textContent = T('TU PROGRESO');
     } else if (G.progress) {
       $('#tpFill').style.width = (G.progress.done / Math.max(1, G.progress.total) * 100) + '%';
-      bar.querySelector('.tp-label').textContent = 'TAREAS COMPLETADAS';
+      bar.querySelector('.tp-label').textContent = T('TAREAS COMPLETADAS');
     }
     let html = '';
     if (G.sab && G.alive && G.sab.kind) {
       const txt = { lights: 'Electricidad: arreglar las luces', reactor: `Reactor: fusión en ${Math.max(0, Math.ceil((G.sab.endsAt - t) / 1000))} s`, o2: `O2: oxígeno agotándose ${Math.max(0, Math.ceil((G.sab.endsAt - t) / 1000))} s` }[G.sab.kind];
-      html += `<li class="sab">⚠ ${txt}</li>`;
+      html += `<li class="sab">⚠ ${T(txt)}</li>`;
     }
-    if (G.role === 'impostor') head.innerHTML = 'Sabotea y elimina a la tripulación.<br><small style="opacity:.7">Tareas falsas:</small>';
-    else if (G.role === 'seeker') head.textContent = 'Atrapa a todos los escondidos.';
-    else if (G.role === 'hider') head.textContent = G.alive ? 'Sobrevive y haz tareas (restan tiempo).' : 'Fantasma: sigue haciendo tareas.';
-    else if (G.role === 'racer') head.textContent = '¡Completa todo antes que nadie!';
-    else head.textContent = !G.alive ? 'Eres un fantasma: termina tus tareas.' : G.sub === 'sheriff' ? 'Tareas · eres el Sheriff 🔫' : G.sub === 'engineer' ? 'Tareas · eres Ingeniero 🔧' : 'Tareas';
+    if (G.role === 'impostor') head.innerHTML = T('Sabotea y elimina a la tripulación.<br><small style="opacity:.7">Tareas falsas:</small>');
+    else if (G.role === 'seeker') head.textContent = T('Atrapa a todos los escondidos.');
+    else if (G.role === 'hider') head.textContent = T(G.alive ? 'Sobrevive y haz tareas (restan tiempo).' : 'Fantasma: sigue haciendo tareas.');
+    else if (G.role === 'racer') head.textContent = T('¡Completa todo antes que nadie!');
+    else head.textContent = T(!G.alive ? 'Eres un fantasma: termina tus tareas.' : G.sub === 'sheriff' ? 'Tareas · eres el Sheriff 🔫' : G.sub === 'engineer' ? 'Tareas · eres Ingeniero 🔧' : 'Tareas');
     head.className = 'tp-head' + (isImp() ? ' imp' : '');
     const near = App.interact.use && App.interact.use.kind === 'task' ? App.interact.use.task.id : null;
     for (const tk of G.tasks) {
@@ -745,7 +745,7 @@
     }
     if (G.mode === 'race' && G.race) {
       const top = G.race.slice().sort((a, b) => b.done - a.done).slice(0, 4);
-      html += '<li style="margin-top:6px;opacity:.7;font-weight:800">CLASIFICACIÓN</li>' + top.map((r, i) => `<li>${i + 1}. ${esc((App.meta.get(r.id) || {}).name || '?')} — ${r.done}/${r.total}</li>`).join('');
+      html += `<li style="margin-top:6px;opacity:.7;font-weight:800">${T('CLASIFICACIÓN')}</li>` + top.map((r, i) => `<li>${i + 1}. ${esc((App.meta.get(r.id) || {}).name || '?')} — ${r.done}/${r.total}</li>`).join('');
     }
     if (list.innerHTML !== html) list.innerHTML = html;
   }
@@ -758,7 +758,7 @@
     tk.step = m.step; tk.done = m.done;
     if (m.done) {
       toast(`✓ ${tk.name}`);
-      Fx.confetti(App.me.x, App.me.y - 60, 46); Fx.text(App.me.x, App.me.y - 70, '¡Tarea lista!'); Sfx.confetti();
+      Fx.confetti(App.me.x, App.me.y - 60, 46); Fx.text(App.me.x, App.me.y - 70, T('¡Tarea lista!')); Sfx.confetti();
       const f = $('#tpFill'); f.classList.remove('pulse-bar'); void f.offsetWidth; f.classList.add('pulse-bar');
     } else Fx.text(App.me.x, App.me.y - 70, `${tk.step}/${tk.steps.length}`, '#ffd60a');
     updateTaskPanel(true);
@@ -781,9 +781,9 @@
       });
     } else if (u.kind === 'sab') {
       const titles = { lights: 'Electricidad: reparar las luces', hand: 'Reactor: detener la fusión', keypad: 'O2: restaurar el oxígeno' };
-      Tasks.open({ game: u.game, idx: u.idx, sab: G.sab, title: titles[u.game] }, { me, send });
+      Tasks.open({ game: u.game, idx: u.idx, sab: G.sab, title: T(titles[u.game]) }, { me, send });
     } else if (u.kind === 'button') {
-      Tasks.open({ game: 'emergency', emergencies: G.emergencies, cooldown: Math.max(0, (G.emergencyReadyAt - now()) / 1000), title: 'Cafetería: botón de emergencia' }, {
+      Tasks.open({ game: 'emergency', emergencies: G.emergencies, cooldown: Math.max(0, (G.emergencyReadyAt - now()) / 1000), title: T('Cafetería: botón de emergencia') }, {
         me, send: (msg) => { if (msg.t === 'emergency') G.emergencies = Math.max(0, G.emergencies - 1); send(msg); },
       });
     }
@@ -867,6 +867,7 @@
     else if (i.use && i.use.kind === 'sab') label = 'REPARAR';
     else if (i.use && i.use.kind === 'admin') label = 'ADMIN';
     else if (i.use && i.use.kind === 'cams') label = 'CÁMARAS';
+    label = T(label);
     if ($('#useLabel').textContent !== label) $('#useLabel').textContent = label;
     set('#actReport', i.report);
     const t = now();
@@ -885,7 +886,7 @@
       vc.classList.toggle('show', ventLeft > 0);
       vc.textContent = Math.ceil(ventLeft);
       set('#actVent', i.vent && (G.inVent || G.ventReadyAt <= t));
-      $('#actVent').querySelector('em').textContent = G.inVent ? 'SALIR' : 'VENTILA';
+      { const vl = T(G.inVent ? 'SALIR' : 'VENTILA'); const ve = $('#actVent').querySelector('em'); if (ve.textContent !== vl) ve.textContent = vl; }
       set('#actSabotage', G.role === 'impostor' && G.phase === 'play' && !G.inVent);
     }
     const key = [i.use && i.use.kind, !!i.report, !!i.kill, !!i.vent].join();
@@ -1037,7 +1038,7 @@
     const fx = $('#meetSplash');
     fx.classList.add('show');
     const caller = App.meta.get(m.caller) || {};
-    $('#msText').textContent = m.kind === 'report' ? '¡CADÁVER REPORTADO!' : '¡REUNIÓN DE EMERGENCIA!';
+    $('#msText').textContent = T(m.kind === 'report' ? '¡CADÁVER REPORTADO!' : '¡REUNIÓN DE EMERGENCIA!');
     $('#msText').style.animation = 'none'; void $('#msText').offsetWidth; $('#msText').style.animation = '';
     if (m.kind === 'report') Sfx.report(); else Sfx.emergency();
     Sfx.meetingHit();
@@ -1109,11 +1110,11 @@
       const alive = M.alive.has(id);
       const nameImp = (G.role === 'impostor' && G.mates.has(id)) ? 'imp' : '';
       return `<div class="vcard ${alive ? '' : 'dead'} ${id === App.you ? 'me' : ''}" data-id="${id}">
-        ${id === M.caller ? `<span class="tag">${M.kind === 'report' ? '📢 REPORTÓ' : '🚨 CONVOCÓ'}</span>` : ''}
+        ${id === M.caller ? `<span class="tag">${T(M.kind === 'report' ? '📢 REPORTÓ' : '🚨 CONVOCÓ')}</span>` : ''}
         <img src="${beanImg(p.color, p.hat, 80, { noShadow: true, ghost: false })}">
         <div class="vname ${nameImp}">${esc(p.name || '?')}</div>
-        <span class="ivoted" style="display:none">VOTÓ</span>
-        <span class="mytag">TU VOTO</span>
+        <span class="ivoted" style="display:none">${T('VOTÓ')}</span>
+        <span class="mytag">${T('TU VOTO')}</span>
         <div class="confirm"><button class="yes">${Icons.svg('check')}</button><button class="no">${Icons.svg('x')}</button></div>
         <div class="voters"></div>
       </div>`;
@@ -1189,6 +1190,7 @@
       hint = !M.alive.has(App.you) ? 'Los fantasmas no votan 👻' : M.myVote ? 'Voto emitido ✓' : 'Toca un jugador para votar';
       if (!M.votingOpened) { M.votingOpened = true; renderVoteCards(); Sfx.pop(); }
     }
+    txt = T(txt); hint = T(hint);
     const el = $('#meetTimer');
     if (el.textContent !== txt) { el.textContent = txt; }
     if ($('#meetHint').textContent !== hint) $('#meetHint').textContent = hint;
@@ -1218,6 +1220,7 @@
   }
 
   function playEjectAnim(m, done) {
+    m = Object.assign({}, m, { line1: T(m.line1 || ''), line2: T(m.line2 || '') });
     const fx = $('#ejectFx');
     fx.classList.add('show');
     $('#ejLine1').textContent = ''; $('#ejLine2').textContent = '';
@@ -1340,13 +1343,13 @@
       hideGameOverlays(false);
       fx.classList.add('show');
       const title = $('#goTitle');
-      if (m.mode === 'race') { const w = m.players.find(p => p.id === m.winners[0]); title.textContent = won ? '¡GANASTE!' : `¡GANA ${(w ? w.name : '').toUpperCase()}!`; }
-      else title.textContent = won ? 'VICTORIA' : 'DERROTA';
+      if (m.mode === 'race') { const w = m.players.find(p => p.id === m.winners[0]); title.textContent = T(won ? '¡GANASTE!' : `¡GANA ${(w ? w.name : '').toUpperCase()}!`); }
+      else title.textContent = T(won ? 'VICTORIA' : 'DERROTA');
       title.className = 'go-title ' + (won ? 'win' : 'lose');
       const roleTxt = { crew: 'La tripulación gana', impostor: 'Los impostores ganan', hiders: 'Los escondidos ganan', seeker: 'El buscador gana', racer: '' }[m.winner];
-      $('#goReason').textContent = (roleTxt ? roleTxt + ' — ' : '') + m.reason;
+      $('#goReason').textContent = (roleTxt ? T(roleTxt) + ' — ' : '') + T(m.reason);
       $('#goLineup').innerHTML = m.players.filter(p => m.winners.indexOf(p.id) >= 0).map((p, i) =>
-        `<div class="lu ${p.id === App.you ? 'me' : ''}" style="animation-delay:${0.3 + i * 0.1}s"><img src="${beanImg(p.color, p.hat, 200, { ghost: !p.alive })}"><span style="color:${p.role === 'impostor' || p.role === 'seeker' ? '#ff453a' : p.sub === 'sheriff' ? '#ffd60a' : p.sub === 'engineer' ? '#ff9f0a' : '#fff'}">${esc(p.name)}${p.sub ? `<small class="go-sub">${p.sub === 'sheriff' ? 'Sheriff' : 'Ingeniero'}</small>` : ''}</span></div>`).join('');
+        `<div class="lu ${p.id === App.you ? 'me' : ''}" style="animation-delay:${0.3 + i * 0.1}s"><img src="${beanImg(p.color, p.hat, 200, { ghost: !p.alive })}"><span style="color:${p.role === 'impostor' || p.role === 'seeker' ? '#ff453a' : p.sub === 'sheriff' ? '#ffd60a' : p.sub === 'engineer' ? '#ff9f0a' : '#fff'}">${esc(p.name)}${p.sub ? `<small class="go-sub">${T(p.sub === 'sheriff' ? 'Sheriff' : 'Ingeniero')}</small>` : ''}</span></div>`).join('');
       $('#goRank').innerHTML = m.ranking ? m.ranking.map((r, i) => { const p = m.players.find(x => x.id === r.id) || {}; return `<div><span>${i + 1}. ${esc(p.name || '?')}</span><span>${r.done}/${r.total}</span></div>`; }).join('') : '';
       if (won) { Sfx.victory(); Fx.confettiDom(fx); } else Sfx.defeat();
     }
@@ -1369,7 +1372,7 @@
     if (open) {
       App.unread = 0; updateBadges();
       const G = App.G;
-      $('#chatTitle').textContent = !G ? 'Chat de la sala' : G.phase === 'meeting' ? (G.alive ? 'Chat de la reunión' : 'Reunión · solo los fantasmas te leen 👻') : 'Chat de fantasmas 👻';
+      $('#chatTitle').textContent = T(!G ? 'Chat de la sala' : G.phase === 'meeting' ? (G.alive ? 'Chat de la reunión' : 'Reunión · solo los fantasmas te leen 👻') : 'Chat de fantasmas 👻');
       setTimeout(() => $('#chatInput').focus(), 300);
       const log = $('#chatLog'); log.scrollTop = log.scrollHeight;
       Sfx.open();
@@ -1415,7 +1418,7 @@
     mapAdmin = sab === 'admin';
     mapTp = sab === 'tp';
     mapSab = sab === true && G.role === 'impostor';
-    $('#mapTitle').textContent = mapTp ? '🛠️ Toca el mapa para teletransportarte' : mapAdmin ? 'Administración · tripulantes por sala' : mapSab ? 'Sabotaje' : 'Mapa de la nave';
+    $('#mapTitle').textContent = T(mapTp ? '🛠️ Toca el mapa para teletransportarte' : mapAdmin ? 'Administración · tripulantes por sala' : mapSab ? 'Sabotaje' : 'Mapa de la nave');
     $('#mapOverlay').classList.add('show');
     Sfx.open();
     renderSabButtons();
@@ -1617,7 +1620,7 @@
   $('#devCode').addEventListener('keydown', e => { if (e.key === 'Enter') $('#devGo').click(); });
   $('#devGo').addEventListener('click', () => {
     const c = $('#devCode').value;
-    if (c.length !== 6) { $('#devError').textContent = 'El código tiene 6 números.'; Sfx.error(); return; }
+    if (c.length !== 6) { $('#devError').textContent = T('El código tiene 6 números.'); Sfx.error(); return; }
     send({ t: 'devLogin', code: c });
   });
   $('#devOff').addEventListener('click', () => send({ t: 'devLogout' }));
@@ -1626,7 +1629,7 @@
 
   function onDevResult(m) {
     if (!m.ok) {
-      const e = $('#devError'); e.textContent = m.text; e.classList.remove('shake'); void e.offsetWidth; e.classList.add('shake');
+      const e = $('#devError'); e.textContent = T(m.text); e.classList.remove('shake'); void e.offsetWidth; e.classList.add('shake');
       Sfx.error(); return;
     }
     App.user = m.user;
@@ -1640,7 +1643,7 @@
 
   function updateDevUi() {
     const on = isDev();
-    $('#mDevLabel').textContent = on ? 'Developer ✓' : 'Modo developer';
+    $('#mDevLabel').textContent = on ? 'Developer ✓' : T('Modo developer');
     $('#btnDev').classList.toggle('on', on);
     $('#devBadge').classList.toggle('show', devSolo());
     if (!on) $('#devPanel').classList.remove('show');
@@ -1668,12 +1671,12 @@
     if (!$('#devPanel').classList.contains('show')) return;
     const G = App.G, D = App.dev;
     const inRoom = !!App.room, lobby = inRoom && !G, solo = devSolo();
-    const chip = (d, label, cls) => `<button class="dchip ${cls || ''}" data-d="${d}">${label}</button>`;
-    const sec = t => `<div class="dev-sec">${t}</div>`;
+    const chip = (d, label, cls) => `<button class="dchip ${cls || ''}" data-d="${d}">${T(label)}</button>`;
+    const sec = t => `<div class="dev-sec">${T(t)}</div>`;
     let h = '';
-    if (!inRoom) h += `<div class="dev-status no">Crea una sala de pruebas para usar los poderes.</div><div class="dev-row">${chip('newroom', '🧪 Crear sala de pruebas', 'green')}</div>`;
-    else if (solo) h += `<div class="dev-status ok">✅ Sala de pruebas: todos los poderes activos</div>`;
-    else h += `<div class="dev-status no">⛔ Hay otros jugadores en la sala. Los poderes se desactivan para que la partida sea justa. Solo puedes probar minijuegos y animaciones.</div>`;
+    if (!inRoom) h += `<div class="dev-status no">${T('Crea una sala de pruebas para usar los poderes.')}</div><div class="dev-row">${chip('newroom', '🧪 Crear sala de pruebas', 'green')}</div>`;
+    else if (solo) h += `<div class="dev-status ok">${T('✅ Sala de pruebas: todos los poderes activos')}</div>`;
+    else h += `<div class="dev-status no">${T('⛔ Hay otros jugadores en la sala. Los poderes se desactivan para que la partida sea justa. Solo puedes probar minijuegos y animaciones.')}</div>`;
 
     if (inRoom && solo) {
       const mode = G ? G.mode : App.room.settings.mode;
@@ -1682,7 +1685,7 @@
         const nb = App.room.players.filter(p => p.bot).length;
         h += `<div class="dev-row">${chip('start', '▶ Empezar ya', 'green')}${chip('bots:1', '🤖 +1')}${chip('bots:3', '🤖 +3')}${chip('bots:10', '🤖 +10')}${chip('bots:25', '🤖 +25')}</div>`;
         h += `<div class="dev-row" style="margin-top:6px">${chip('bots:100', '🤪 MODO LOCURA (100 bots)', 'red')}${chip('clearbots', '🧹 Quitar bots')}</div>`;
-        h += `<p class="dev-note">Bots en la sala: <b>${nb}</b> / 100</p>`;
+        h += `<p class="dev-note">${T(`Bots en la sala: <b>${nb}</b> / 100`)}</p>`;
         if (mode === 'classic') {
           h += sec('Impostores en la próxima partida');
           h += `<div class="dev-row">${[1, 2, 3, 5, 10, 20].map(n => chip('imps:' + n, '🔪 ' + n, (D.impostors || 0) === n ? 'sel' : '')).join('')}</div>`;
@@ -1726,7 +1729,7 @@
       h += sec('Probar animaciones');
       h += `<div class="dev-row">${G ? chip('anim:role', '🎭 Revelar rol') : ''}${chip('anim:kill', '🔪 Muerte')}${chip('anim:meeting', '📢 Cadáver')}${chip('anim:emergency', '🚨 Emergencia')}${chip('anim:eject', '🚀 Expulsión')}${chip('anim:win', '🏆 Victoria')}${chip('anim:lose', '💔 Derrota')}${chip('anim:confetti', '🎉 Confeti')}</div>`;
     }
-    h += `<p class="dev-note">Atajo: F2 abre y cierra este panel.</p>`;
+    h += `<p class="dev-note">${T('Atajo: F2 abre y cierra este panel.')}</p>`;
     $('#devBody').innerHTML = h;
   }
 
@@ -1771,7 +1774,7 @@
     const me = meta || { name: App.user.username, color: App.user.color, hat: App.user.hat };
     const fakeSab = { switches: [false, true, false, true, false], holds: [false, false], done: [false, false], code: '31425' };
     toggleDev(false);
-    Tasks.open({ game, title: '🛠️ Prueba · ' + GAME_NAMES[game], fill: game === 'fuel', idx: 0, sab: fakeSab, emergencies: 1, cooldown: 0 }, {
+    Tasks.open({ game, title: T('🛠️ Prueba · ' + T(GAME_NAMES[game])), fill: game === 'fuel', idx: 0, sab: fakeSab, emergencies: 1, cooldown: 0 }, {
       me, test: true, send: () => {},
       complete: () => toast('✅ Minijuego completado (modo prueba: no cuenta en la partida)'),
     });
@@ -1812,7 +1815,7 @@
   // ---------------- cámaras de seguridad
   function openCams() {
     const grid = $('#camGrid');
-    grid.innerHTML = S.CAMERAS.map((cm, i) => `<div class="cam"><canvas data-i="${i}"></canvas><span>CAM ${i + 1} · ${cm.name}</span><i>● REC</i></div>`).join('');
+    grid.innerHTML = S.CAMERAS.map((cm, i) => `<div class="cam"><canvas data-i="${i}"></canvas><span>${T(`CAM ${i + 1} · ${cm.name}`)}</span><i>● REC</i></div>`).join('');
     $('#camOverlay').classList.add('show');
     Sfx.camStatic();
   }
@@ -2011,7 +2014,7 @@
     if (G && G.mode === 'hideseek') {
       const left = Math.max(0, G.hsEndAt - t);
       const rel = Math.max(0, G.seekerReleaseAt - t);
-      $('#hsLabel').textContent = rel > 0 && G.phase === 'play' ? 'EL BUSCADOR SALE EN' : G.finalHide ? '¡ESCONDITE FINAL!' : 'TIEMPO RESTANTE';
+      $('#hsLabel').textContent = T(rel > 0 && G.phase === 'play' ? 'EL BUSCADOR SALE EN' : G.finalHide ? '¡ESCONDITE FINAL!' : 'TIEMPO RESTANTE');
       const show = rel > 0 && G.phase === 'play' ? rel : left;
       $('#hsTime').textContent = `${Math.floor(show / 60000)}:${String(Math.floor(show / 1000) % 60).padStart(2, '0')}`;
       $('#hsTimer').classList.toggle('final', !!G.finalHide);
@@ -2033,7 +2036,7 @@
     if (G && G.sab && G.sab.kind && G.phase === 'play') {
       const b = $('#sabBanner');
       const left = Math.max(0, Math.ceil((G.sab.endsAt - t) / 1000));
-      const txt = G.sab.kind === 'lights' ? '💡 Luces saboteadas' : G.sab.kind === 'reactor' ? `☢️ ¡FUSIÓN DEL REACTOR EN ${left} s!` : `🫁 ¡OXÍGENO AGOTADO EN ${left} s!`;
+      const txt = T(G.sab.kind === 'lights' ? '💡 Luces saboteadas' : G.sab.kind === 'reactor' ? `☢️ ¡FUSIÓN DEL REACTOR EN ${left} s!` : `🫁 ¡OXÍGENO AGOTADO EN ${left} s!`);
       if (b.textContent !== txt) b.textContent = txt;
       b.classList.add('show');
     } else $('#sabBanner').classList.remove('show');
@@ -2188,6 +2191,17 @@
     }
     Draw.bean(ctx, x, y, { color: meta.color, hat: meta.hat, flip: o.flip, moving: o.moving, walk: o.walk, ghost: o.ghost, time: t });
   }
+
+  // ================================================================ idioma
+  $$('[data-lang-open]').forEach(b => b.addEventListener('click', () => I18N.openPicker(false)));
+  $$('.lang-cur').forEach(el => { el.textContent = I18N.lang.toUpperCase(); });
+  $$('.lang-name').forEach(el => { el.textContent = I18N.LANGS[I18N.lang]; });
+  $$('[data-set-lang]').forEach(b => {
+    b.classList.toggle('sel', b.dataset.setLang === I18N.lang);
+    b.addEventListener('click', () => I18N.setLang(b.dataset.setLang));
+  });
+  // Tras cambiar de idioma la página se recarga: volvemos directo a donde estabas
+  if (I18N.justSwitched) setTimeout(() => $('#btnStart').click(), 50);
 
   // ================================================================ arranque
   Icons.hydrate();

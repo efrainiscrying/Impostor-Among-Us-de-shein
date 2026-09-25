@@ -136,7 +136,7 @@ function roomName(room, x, y) {
 function colorName(id) { const c = S.COLORS.find(c => c.id === id); return c ? c.name : id; }
 
 function botChat(room, p, text) {
-  room.broadcast({ t: 'chat', id: p.id, name: p.name, color: p.color, hat: p.hat, text, ghost: false });
+  room.broadcast({ t: 'chat', id: p.id, name: p.name, color: p.color, hat: p.hat, text, ghost: false, bot: true });
 }
 
 function initAI(p) {
@@ -451,7 +451,8 @@ function onChat(room, from, text) {
   for (const q of room.active()) {
     if (q === from || !q.alive) continue;
     const cn = colorName(q.color).toLowerCase();
-    if (low.indexOf(q.name.toLowerCase()) >= 0 || low.indexOf(cn) >= 0) {
+    // los jugadores pueden escribir en inglés: el id del color es su nombre en inglés
+    if (low.indexOf(q.name.toLowerCase()) >= 0 || low.indexOf(cn) >= 0 || new RegExp('\\b' + q.color + '\\b').test(low)) {
       for (const b of room.players.values()) {
         if (!b.bot || !b.ai || b === q) continue;
         b.ai.suspicion[q.id] = (b.ai.suspicion[q.id] || 0) + 18;

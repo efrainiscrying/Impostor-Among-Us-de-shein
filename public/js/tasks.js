@@ -10,7 +10,7 @@
   function txt(c, s, x, y, size, color, align, font) {
     c.font = `${font || 700} ${size}px Inter, system-ui, sans-serif`;
     c.fillStyle = color || '#fff'; c.textAlign = align || 'center'; c.textBaseline = 'middle';
-    c.fillText(s, x, y);
+    c.fillText(T(s), x, y);
   }
   function bg(c, top, bottom) {
     const g = c.createLinearGradient(0, 0, 0, W);

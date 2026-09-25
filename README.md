@@ -9,6 +9,11 @@ sintetizan en el navegador: no hay imágenes ni audios externos.
 
 ## Qué incluye
 
+**Idiomas**
+- Español e inglés. La primera vez que abres el juego te pregunta el idioma; luego lo cambias
+  cuando quieras con el botón 🌐 del menú o en **Ajustes → Idioma** (también en plena partida).
+- Cada jugador ve el juego en su idioma, aunque jueguen juntos en la misma sala.
+
 **Cuentas**
 - Crear cuenta / iniciar sesión con usuario y contraseña (contraseñas cifradas con scrypt).
 - La sesión se recuerda en el dispositivo. Estadísticas: partidas, victorias, tareas y eliminaciones.
@@ -123,6 +128,7 @@ server/
 public/
   index.html, css/style.css
   js/shared.js  mapa, tareas, colores y ajustes (compartido con el servidor)
+  js/i18n.js    idiomas (español / inglés) y selector de idioma
   js/app.js     pantallas, red, controles, HUD, reuniones y animaciones
   js/world.js   dibujo de la nave, efectos y visión con sombras
   js/draw.js    tripulantes, sombreros, fantasmas y cuerpos

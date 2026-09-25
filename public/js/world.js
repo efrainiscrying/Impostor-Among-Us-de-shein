@@ -196,7 +196,7 @@
     c.fillStyle = '#9aa3b2';
     for (const [px, py] of [[x, fy], [x + w - 10, fy], [x, fy + H - 10], [x + w - 10, fy + H - 10]]) { c.fillRect(px, py, 10, 10); c.strokeStyle = OUT; c.lineWidth = 1.5; c.strokeRect(px, py, 10, 10); }
     // sello
-    if (w > 60 && H > 36) { c.save(); c.globalAlpha = 0.45; c.fillStyle = '#1c1c1c'; c.font = 'bold 11px sans-serif'; c.textAlign = 'center'; c.fillText('FRÁGIL', x + w / 2, fy + H / 2 + 4); c.restore(); }
+    if (w > 60 && H > 36) { c.save(); c.globalAlpha = 0.45; c.fillStyle = '#1c1c1c'; c.font = 'bold 11px sans-serif'; c.textAlign = 'center'; c.fillText(T('FRÁGIL'), x + w / 2, fy + H / 2 + 4); c.restore(); }
   }
 
   function plant(c, x, y) {
@@ -314,7 +314,7 @@
     // Cafetería
     stars(c, 1720, 36, 180, 58, 3); stars(c, 2180, 36, 180, 58, 9);
     c.fillStyle = '#3d4452'; rr(c, 1960, 30, 160, 70, 6); c.fill(); c.strokeStyle = OUT; c.lineWidth = 2.5; c.stroke();
-    c.fillStyle = '#ffeb3b'; c.font = 'bold 26px sans-serif'; c.textAlign = 'center'; c.fillText('CAFETERÍA', 2040, 75);
+    c.fillStyle = '#ffeb3b'; c.font = 'bold 26px sans-serif'; c.textAlign = 'center'; c.fillText(T('CAFETERÍA'), 2040, 75);
     for (const t of [[1800, 280], [2280, 280], [1800, 660], [2280, 660]]) {
       stool(c, t[0] - 78, t[1] + 20); stool(c, t[0] + 78, t[1] + 20);
       roundTable(c, t[0], t[1] + 18, 66, 34, 22, '#d6dbe2', '#9aa2ae');
@@ -447,7 +447,7 @@
     // tuberías laterales
     for (const sx of [128, 332]) { c.fillStyle = '#5c6bc0'; rr(c, sx, 1100, 20, 120, 8); c.fill(); c.stroke(); c.fillStyle = 'rgba(255,255,255,0.25)'; c.fillRect(sx + 4, 1104, 4, 112); }
     // consola del reactor
-    c.fillStyle = '#ffd60a'; c.font = 'bold 12px sans-serif'; c.textAlign = 'center'; c.fillText('NÚCLEO', cx, 1265);
+    c.fillStyle = '#ffd60a'; c.font = 'bold 12px sans-serif'; c.textAlign = 'center'; c.fillText(T('NÚCLEO'), cx, 1265);
   }
 
   function decorateLobby(c) {
